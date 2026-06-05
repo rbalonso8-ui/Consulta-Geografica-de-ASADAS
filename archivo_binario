@@ -1,87 +1,51 @@
 import requests
 import json
-import struct
-
-
+import os
+import time as t
 url = "https://datos.aresep.go.cr/ws.datosabiertos/Services/IA/Asadas.svc/ObtenerInformacionUbicacionAsadas"
+if "asadas.json" not in os.listdir():
+    respuesta = requests.get(url)
+    datos = respuesta.json()
+    with open("asadas.json", "w", encoding="utf-8") as archivo:
+        json.dump(datos, archivo, indent=4, ensure_ascii=False)
+    print("Archivo JSON guardado correctamente.")
+else:
+    with open("asadas.json", "r", encoding="utf-8") as archivo:
+        datos = json.load(archivo)
+    print("Archivo JSON cargado desde disco.")
 
-respuesta = requests.get(url)
+def escribir_texto_binario(datos, nombre_archivo):
+    with open(nombre_archivo, 'wb') as archivo:
+        contenido_bytes = json.dumps(datos, ensure_ascii=False).encode('utf-8')
+        archivo.write(contenido_bytes)
+    print(f"Archivo binario guardado: {nombre_archivo}")
 
-datos = respuesta.json()
+def leer_texto_binario(nombre_archivo):
+    with open(nombre_archivo, 'rb') as archivo:
+        contenido_bytes = archivo.read()
+        datos = json.loads(contenido_bytes.decode('utf-8'))
+    return datos
+def buscar_asada_por_id(datos, id_asada):
+    registros = datos.get("value", [])
+    for asada in registros:
+        if str(asada.get("id_Asada")) == str(id_asada):
+            return asada
+    return None
+t.sleep(1.5)
+print("\033c")
+id_buscar = input("Ingrese el ID de la ASADA a buscar: ")
+resultado = buscar_asada_por_id(datos, id_buscar)
 
-with open("asadas.json", "w", encoding="utf-8") as archivo:
-    json.dump(datos, archivo, indent=4, ensure_ascii=False)
-print("Archivo JSON guardado correctamente.")
+if resultado:
+    print(f"Operador   | {resultado['operador']}")
+    print(f"Provincia  | {resultado['provincia']}")
+    print(f"Cantón     | {resultado['canton']}")
+    print(f"Distrito   | {resultado['distrito']}")
+    print(f"Teléfono   | {resultado['telefono']}")
+    print(f"Correo     | {resultado['correo']}")
+    print(f"Tipo Sistema: {resultado['tipoSistema']}")
+    print(f"Coordenadas: X={resultado['coordenadaX'].strip()}, Y={resultado['coordenadaY'].strip()}")
+else:
+    print(f"No se encontró ninguna ASADA con ID {id_buscar}")
 
-def crear_binario_y_indice(json_path='asadas.json', bin_path='asadas.bin', idx_path='asadas.idx'):
-    with open(json_path, 'r', encoding='utf-8') as f:
-        datos = json.load(f)
-
-    registros = datos if isinstance(datos, list) else datos.get('List', datos.get('d', datos))
-
-    if not isinstance(registros, list):
-        registros = list(registros)
-
-    with open(bin_path, 'wb') as bfile, open(idx_path, 'wb') as idxfile:
-        for rec in registros:
-            try:
-                id_asada = int(rec.get('id_Asada') or rec.get('id_asada') or rec.get('ID_ASADA') )
-            except Exception:
-                continue
-            pos = bfile.tell()
-            raw = json.dumps(rec, ensure_ascii=False).encode('utf-8')
-            bfile.write(struct.pack('<I', id_asada))
-            bfile.write(struct.pack('<I', len(raw)))
-            bfile.write(raw)
-            idxfile.write(struct.pack('<IQ', id_asada, pos))
-
-    print(f"Archivo binario '{bin_path}' y índice '{idx_path}' creados.")
-
-
-def json_a_binario(json_path='asadas.json', bin_path='asadas.bin'):
-    with open(json_path, 'r', encoding='utf-8') as f:
-        datos = json.load(f)
-    
-    registros = datos if isinstance(datos, list) else datos.get('List', datos.get('d', datos))
-    if not isinstance(registros, list):
-        registros = list(registros)
-    
-    with open(bin_path, 'wb') as bfile:
-        bfile.write(struct.pack('<I', len(registros)))  # Cantidad de registros
-        for rec in registros:
-            raw = json.dumps(rec, ensure_ascii=False).encode('utf-8')
-            bfile.write(struct.pack('<I', len(raw)))
-            bfile.write(raw)
-    
-    print(f"JSON convertido a binario: '{bin_path}'")
-    return bin_path
-
-
-def obtener_por_id(id_objeto, bin_path='asadas.bin', idx_path='asadas.idx'):
-
-        with open(idx_path, 'rb') as idxfile:
-            while True:
-                data = idxfile.read(12)  # 4 bytes para id_asada + 8 bytes para posición
-                if not data:
-                    break
-                id_asada, pos = struct.unpack('<IQ', data)
-                if id_asada == int(id_objeto):
-                    with open(bin_path, 'rb') as bfile:
-                        bfile.seek(pos)
-                        id_leido = struct.unpack('<I', bfile.read(4))[0]
-                        longitud = struct.unpack('<I', bfile.read(4))[0]
-                        raw = bfile.read(longitud)
-                        return json.loads(raw.decode('utf-8'))
-
-
-if __name__ == '__main__':
-    # Crear binario e índice basados en el JSON descargado
-    crear_binario_y_indice()
-
-    # Si se pasa un id por línea de comandos, mostrar la asada correspondiente
-    id_consulta = input("Ingrese el id_Asada a consultar: ")
-    resultado = obtener_por_id(id_consulta)
-    if resultado:
-        print(json.dumps(resultado, ensure_ascii=False, indent=4))
-    else:
-        print(f"No se encontró la ASADA con id_Asada {id_consulta}.")
+escribir_texto_binario(datos, "asadas.bin")
