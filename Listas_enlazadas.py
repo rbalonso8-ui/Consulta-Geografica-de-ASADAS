@@ -417,15 +417,15 @@ if __name__ == "__main__":
     with open("asadas.json", "r", encoding="utf-8") as f:
         datos = json.load(f)
     construir(datos["value"])
-    
+
     print("\nPrueba cantones de Alajuela:")
     for cantón in obtener_cantones("ALAJUELA"):
         print(" ", cantón)
- 
+
     print("\nPrueba distritos de San Carlos:")
     for distrito in obtener_distritos("ALAJUELA", "SAN CARLOS"):
         print(" ", distrito)
-        
+
     print("\nPrueba ASADAS de Quesada:")
     for asada in obtener_asadas("ALAJUELA", "SAN CARLOS", "QUESADA"):
         print(" ", asada)
