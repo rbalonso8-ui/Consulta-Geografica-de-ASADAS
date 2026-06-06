@@ -69,7 +69,7 @@ def texto_a_bytes(texto: str, tamaño: int)-> bytes:
     Returns:
         bytes: El texto convertido a bytes con el tamaño especificado
     """
-    return texto.encode('utf-8').ljust(tamaño, b'\x00')
+    return texto.encode('utf-8').ljust(tamaño, b'\x00') [:tamaño]
 
 def entero_a_bytes(entero: int)-> bytes:
     """Convierte un entero a bytes
@@ -115,7 +115,7 @@ def escribir_provincia(archivo: str, nodo: Provincia):
     """
     archivo.write(texto_a_bytes(nodo.nombre, 50))
     archivo.write(entero_a_bytes(nodo.sig_provincia))
-    archivo.write(entero_a_bytes(nodo.primer_canton))
+    archivo.write(entero_a_bytes(nodo.cantón))
  
 def escribir_cantón(archivo: str, nodo: Cantón):
     """Escribe el nodo de cantón en un archivo en la posicion actual
@@ -125,8 +125,8 @@ def escribir_cantón(archivo: str, nodo: Cantón):
         nodo (Cantón): cantón a escribir en el archivo
     """
     archivo.write(texto_a_bytes(nodo.nombre, 50))
-    archivo.write(entero_a_bytes(nodo.sig_canton))
-    archivo.write(entero_a_bytes(nodo.primer_distrito)) 
+    archivo.write(entero_a_bytes(nodo.sig_cantón))
+    archivo.write(entero_a_bytes(nodo.distrito)) 
  
 def escribir_distrito(archivo: str, nodo: Distrito):
     """Escribe el nodo de distrito en un archivo en la posicion actual
@@ -137,7 +137,7 @@ def escribir_distrito(archivo: str, nodo: Distrito):
     """
     archivo.write(texto_a_bytes(nodo.nombre, 50))
     archivo.write(entero_a_bytes(nodo.sig_distrito))
-    archivo.write(entero_a_bytes(nodo.primera_asada))
+    archivo.write(entero_a_bytes(nodo.asada))
  
 def escribir_asada(archivo: str, nodo: ASADA):
     """Escribe el nodo ASADA en un archivo en la posición actual
@@ -188,27 +188,27 @@ def construir(lista_asadas: list):
     nodos_distritos  = []
     nodos_asadas_geo = []
  
-    for i_prov, nombre_prov in enumerate(sorted(jerarquia.keys())):
-        nodo_prov = Provincia(nombre_prov)
-        nodo_prov.sig_provincia = len(nodos_provincias) + 1 if i_prov + 1 < len(jerarquia) else -1
-        nodo_prov.primer_canton = len(nodos_cantones)
-        nodos_provincias.append(nodo_prov)
+    for i_prov, nombre_provincia in enumerate(sorted(jerarquia.keys())):
+        nodo_provincia = Provincia(nombre_provincia)
+        nodo_provincia.sig_provincia = len(nodos_provincias) + 1 if i_prov + 1 < len(jerarquia) else -1
+        nodo_provincia.cantón = len(nodos_cantones)
+        nodos_provincias.append(nodo_provincia)
  
-        cantones_ordenados = sorted(jerarquia[nombre_prov].keys())
-        for i_cant, nombre_cant in enumerate(cantones_ordenados):
-            nodo_cant = Cantón(nombre_cant)
-            nodo_cant.sig_canton      = len(nodos_cantones) + 1 if i_cant + 1 < len(cantones_ordenados) else -1
-            nodo_cant.primer_distrito = len(nodos_distritos)
-            nodos_cantones.append(nodo_cant)
+        cantones_ordenados = sorted(jerarquia[nombre_provincia].keys())
+        for i_cant, nombre_cantón in enumerate(cantones_ordenados):
+            nodo_cantón = Cantón(nombre_cantón)
+            nodo_cantón.sig_cantón = len(nodos_cantones) + 1 if i_cant + 1 < len(cantones_ordenados) else -1
+            nodo_cantón.distrito = len(nodos_distritos)
+            nodos_cantones.append(nodo_cantón)
  
-            distritos_ordenados = sorted(jerarquia[nombre_prov][nombre_cant].keys())
-            for i_dist, nombre_dist in enumerate(distritos_ordenados):
-                nodo_dist = Distrito(nombre_dist)
-                nodo_dist.sig_distrito  = len(nodos_distritos) + 1 if i_dist + 1 < len(distritos_ordenados) else -1
-                nodo_dist.primera_asada = len(nodos_asadas_geo)
-                nodos_distritos.append(nodo_dist)
+            distritos_ordenados = sorted(jerarquia[nombre_provincia][nombre_cantón].keys())
+            for i_dist, nombre_distrito in enumerate(distritos_ordenados):
+                nodo_distrito = Distrito(nombre_distrito)
+                nodo_distrito.sig_distrito  = len(nodos_distritos) + 1 if i_dist + 1 < len(distritos_ordenados) else -1
+                nodo_distrito.asada = len(nodos_asadas_geo)
+                nodos_distritos.append(nodo_distrito)
  
-                asadas_del_distrito = jerarquia[nombre_prov][nombre_cant][nombre_dist]
+                asadas_del_distrito = jerarquia[nombre_provincia][nombre_cantón][nombre_distrito]
                 for i_a, (id_a, pos_ppal) in enumerate(asadas_del_distrito):
                     nodo_a = ASADA(id_a, pos_ppal)
                     nodo_a.sig_asada = len(nodos_asadas_geo) + 1 if i_a + 1 < len(asadas_del_distrito) else -1
@@ -230,7 +230,7 @@ def construir(lista_asadas: list):
         for nodo in nodos_asadas_geo:
             escribir_asada(f, nodo)
  
-    print("Archivos geográficos creados:")
+    print("Archivos creados:")
     print(f"provincias.bin: {len(nodos_provincias)} provincias")
     print(f"cantones.bin: {len(nodos_cantones)} cantones")
     print(f"distritos.bin: {len(nodos_distritos)} distritos")
@@ -249,7 +249,7 @@ def leer_provincia(archivo:str, posición:int) -> Provincia:
         Provincia(Provincia): El nodo de provincia leído desde el archivo
     """
     archivo.seek(posición * TAMAÑO)
-    nodo = Provincia(archivo.read(50).decode("utf-8").rstrip())
+    nodo = Provincia(archivo.read(50).decode("utf-8").rstrip("\x00").rstrip())
     nodo.sig_provincia = bytes_a_entero(archivo.read(4))
     nodo.cantón = bytes_a_entero(archivo.read(4))
     return nodo
@@ -265,7 +265,7 @@ def leer_cantón(archivo:str, posición:int) -> Cantón:
         Cantón(Cantón): El nodo de cantón leído desde el archivo
     """
     archivo.seek(posición * TAMAÑO)
-    nodo = Cantón(archivo.read(50).decode("utf-8").rstrip())
+    nodo = Cantón(archivo.read(50).decode("utf-8").rstrip("\x00").rstrip())
     nodo.sig_cantón = bytes_a_entero(archivo.read(4))
     nodo.distrito = bytes_a_entero(archivo.read(4))
     return nodo
@@ -281,7 +281,7 @@ def leer_distrito(archivo:str, posición:int) -> Distrito:
         Distrito(Distrito): El nodo de distrito leído desde el archivo
     """
     archivo.seek(posición * TAMAÑO)
-    nodo = Distrito(archivo.read(50).decode("utf-8").rstrip())
+    nodo = Distrito(archivo.read(50).decode("utf-8").rstrip("\x00").rstrip())
     nodo.sig_distrito = bytes_a_entero(archivo.read(4))
     nodo.asada = bytes_a_entero(archivo.read(4))
     return nodo
@@ -297,11 +297,12 @@ def leer_asada(archivo:str, posición:int) -> ASADA:
         ASADA(ASADA): El nodo de ASADA leído desde el archivo
     """
     archivo.seek(posición * TAMAÑO_ASADA)
-    id_asada = archivo.read(10).decode("utf-8").rstrip()
+    id_asada = archivo.read(10).decode("utf-8").rstrip("\x00").rstrip()
     posicion = bytes_a_entero(archivo.read(4))
     nodo = ASADA(id_asada, posicion)
     nodo.sig_asada = bytes_a_entero(archivo.read(4))
     return nodo
+
 
 
 def obtener_cantones(nombre_provincia: str)-> list[str]:
