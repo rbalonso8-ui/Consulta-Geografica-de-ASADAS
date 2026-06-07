@@ -172,7 +172,7 @@ def cargar_árbol(nombre_archivo: str = "árbol_binario.bin") -> ArbolBinario:
  
     for nodo in nodos:
         nodo.izquierda = nodos[nodo.index_izquierda] if nodo.index_izquierda != -1 else None
-        nodo.derecha   = nodos[nodo.index_derecha] if nodo.index_derecha != -1 else None
+        nodo.derecha = nodos[nodo.index_derecha] if nodo.index_derecha != -1 else None
  
     árbol = ArbolBinario()
     árbol.raíz = nodos[0] if nodos else None
