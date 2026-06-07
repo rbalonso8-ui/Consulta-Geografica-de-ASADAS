@@ -24,3 +24,37 @@ class ArbolBinario:
 
 
 
+def texto_a_bytes(texto: str, tamaño: int) -> bytes:
+    """Convierte un texto a bytes con tamaño especifico
+
+    Args:
+        texto (str): Texto a convertir a bytes
+        tamaño (int): Tamaño fijo en bytes para el campo
+
+    Returns:
+        bytes: Bytes resultantes de la conversión
+    """
+    return str(texto or "").encode('utf-8').ljust(tamaño, b'\x00')[:tamaño]
+
+def entero_a_bytes(entero: int) -> bytes:
+    """Convierte un entero a bytes
+
+    Args:
+        entero (int): Entero a convertir a bytes
+
+    Returns:
+        bytes: Bytes resultantes de la conversión
+    """
+    return entero.to_bytes(4, byteorder='big', signed=True)
+
+def bytes_a_entero(bytes: bytes) -> int:
+    """Convierte bytes a un entero
+
+    Args:
+        bytes (bytes): Bytes a convertir a entero
+
+    Returns:
+        int: Entero resultante de la conversión
+    """
+    return int.from_bytes(bytes, byteorder='big', signed=True)
+
