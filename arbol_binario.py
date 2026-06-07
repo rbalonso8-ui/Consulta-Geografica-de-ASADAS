@@ -73,14 +73,14 @@ def insertar(raíz: Nodo, inicio: int, fin: int, lista: list):
     if inicio < raíz.índice:
         medio_izquierda = (inicio + raíz.índice - 1) // 2
         id_asada, posición = lista[medio_izquierda]
-        raíz.izquierda     = Nodo(id_asada, posición)
+        raíz.izquierda = Nodo(id_asada, posición)
         raíz.izquierda.índice = medio_izquierda
         insertar(raíz.izquierda, inicio, raíz.índice - 1, lista)
  
     if raíz.índice < fin:
-        medio_derecha          = (raíz.índice + 1 + fin) // 2
+        medio_derecha = (raíz.índice + 1 + fin) // 2
         id_asada, posición = lista[medio_derecha]
-        raíz.derecha       = Nodo(id_asada, posición)
+        raíz.derecha = Nodo(id_asada, posición)
         raíz.derecha.índice = medio_derecha
         insertar(raíz.derecha, raíz.índice + 1, fin, lista)
  
@@ -117,7 +117,7 @@ def guardar_árbol(árbol: ArbolBinario, nombre_archivo: str = "árbol_binario.b
         nombre_archivo (str): Nombre del archivo de salida
     """
     nodos_ordenados = []
-    índices         = {}
+    índices = {}
  
     def asignar_índices(nodo):
         if nodo is None:
@@ -131,15 +131,15 @@ def guardar_árbol(árbol: ArbolBinario, nombre_archivo: str = "árbol_binario.b
  
     with open(nombre_archivo, "wb") as archivo:
         for nodo in nodos_ordenados:
-            idx_izq = índices[id(nodo.izquierda)] if nodo.izquierda else -1
-            idx_der = índices[id(nodo.derecha)]   if nodo.derecha   else -1
+            idx_izquierda = índices[id(nodo.izquierda)] if nodo.izquierda else -1
+            idx_derecha = índices[id(nodo.derecha)]   if nodo.derecha   else -1
  
             archivo.write(texto_a_bytes(nodo.id_asada, 6))
             archivo.write(entero_a_bytes(nodo.posición))
-            archivo.write(entero_a_bytes(idx_izq))
-            archivo.write(entero_a_bytes(idx_der))
+            archivo.write(entero_a_bytes(idx_izquierda))
+            archivo.write(entero_a_bytes(idx_derecha))
  
-    print(f"árbol_binario.bin creado — {len(nodos_ordenados)} nodos de {TAMAÑO} bytes c/u")
+    print(f"árbol_binario.bin creado: {len(nodos_ordenados)} nodos de {TAMAÑO} bytes c/u")
  
  
  
@@ -162,19 +162,19 @@ def cargar_árbol(nombre_archivo: str = "árbol_binario.bin") -> ArbolBinario:
  
             id_asada = bloque[0:6].decode("utf-8").rstrip('\x00').rstrip()
             posición = bytes_a_entero(bloque[6:10])
-            idx_izq  = bytes_a_entero(bloque[10:14])
-            idx_der  = bytes_a_entero(bloque[14:18])
+            idx_izquierda  = bytes_a_entero(bloque[10:14])
+            idx_derecha  = bytes_a_entero(bloque[14:18])
  
             nodo          = Nodo(id_asada, posición)
-            nodo.index_izq = idx_izq
-            nodo.index_der = idx_der
+            nodo.index_izquierda = idx_izquierda
+            nodo.index_derecha = idx_derecha
             nodos.append(nodo)
  
     for nodo in nodos:
-        nodo.izquierda = nodos[nodo.index_izq] if nodo.index_izq != -1 else None
-        nodo.derecha   = nodos[nodo.index_der] if nodo.index_der != -1 else None
+        nodo.izquierda = nodos[nodo.index_izquierda] if nodo.index_izquierda != -1 else None
+        nodo.derecha   = nodos[nodo.index_derecha] if nodo.index_derecha != -1 else None
  
-    árbol      = ArbolBinario()
+    árbol = ArbolBinario()
     árbol.raíz = nodos[0] if nodos else None
  
     print(f"árbol_binario.bin cargado — {len(nodos)} nodos")
@@ -184,10 +184,6 @@ def cargar_árbol(nombre_archivo: str = "árbol_binario.bin") -> ArbolBinario:
  
 def construir(lista_asadas: list) -> ArbolBinario:
     """Construye el árbol binario balanceado desde la lista de ASADAs y guarda árbol_binario.bin.
- 
-    Ordena la lista por id_Asada, toma el elemento del medio como raíz,
-    y recursivamente hace lo mismo con cada mitad. Así el árbol queda
-    balanceado aunque los datos vengan ordenados de menor a mayor.
  
     Args:
         lista_asadas (list): Lista de dicts con los datos de cada ASADA
@@ -204,9 +200,9 @@ def construir(lista_asadas: list) -> ArbolBinario:
     if not lista:
         return árbol
  
-    medio                  = len(lista) // 2
-    id_asada, posición     = lista[medio]
-    árbol.raíz             = Nodo(id_asada, posición)
+    medio = len(lista) // 2
+    id_asada, posición = lista[medio]
+    árbol.raíz = Nodo(id_asada, posición)
     árbol.raíz.índice = medio
  
     insertar(árbol.raíz, 0, len(lista) - 1, lista)
@@ -221,4 +217,18 @@ if __name__ == "__main__":
         datos = json.load(f)
 
     árbol = construir(datos["value"])
-    pass
+    
+    print("\nPrueba buscar id 1790:")
+    print(f"\tposición = {buscar(árbol, '1790')}")
+ 
+    print("\nPrueba buscar id 9999 (no existe):")
+    print(f"\tposición = {buscar(árbol, '9999')}")
+ 
+    print("\nPrueba cargar desde archivo y buscar:")
+    árbol2 = cargar_árbol()
+    print(f"\tposición desde archivo = {buscar(árbol2, '1790')}")
+ 
+    print("\nRaíz del árbol:")
+    print(f"\tid = {árbol.raíz.id_asada}")
+    print(f"\tizquierda = {árbol.raíz.izquierda.id_asada if árbol.raíz.izquierda else None}")
+    print(f"\tderecha = {árbol.raíz.derecha.id_asada   if árbol.raíz.derecha   else None}")
