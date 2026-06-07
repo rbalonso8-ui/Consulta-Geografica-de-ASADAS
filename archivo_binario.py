@@ -17,7 +17,7 @@ else:
         datos = json.load(archivo)
     print("Archivo JSON cargado desde disco.")
     
-def campo_texto(valor, n):
+def campo_texto(valor: str, n: int) -> bytes:
     """Convierte un valor de bytes de longitud exacta n
 
     Args:
@@ -30,7 +30,7 @@ def campo_texto(valor, n):
     encoded = str(valor or "").encode("utf-8")
     return encoded.ljust(n)[:n]
 
-def buscar_asada_por_id(datos, id_asada):
+def buscar_asada_por_id(datos: dict, id_asada: str) -> dict:
     """Busca ASADA por su id recorriendo la lista
 
     Args:
@@ -47,7 +47,7 @@ def buscar_asada_por_id(datos, id_asada):
     return None
 
 
-def escribir_texto_binario(lista_asadas):
+def escribir_texto_binario(lista_asadas: list):
     """Crea asdas_principal.bin con un tamaño fijo
 
     Args:
@@ -70,7 +70,7 @@ def escribir_texto_binario(lista_asadas):
  
     print(f"asadas_principal.bin creado — {len(lista_asadas)} registros de {TAMAÑO_REGISTRO} bytes c/u")
 
-def leer_texto_binario(posicion):
+def leer_texto_binario(posicion: int) -> dict:
     """Lee el registro en la posición dada y devuelve sus datos
 
     Args:
