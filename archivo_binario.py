@@ -100,6 +100,9 @@ if __name__ == "__main__":
     print("\033c")
     id_buscar = input("Ingrese el ID de la ASADA a buscar: ")
     resultado = buscar_asada_por_id(datos, id_buscar)
+    archivo_binario = "asadas_principal.bin"
+    escribir_texto_binario(datos["value"])
+    
 
 if resultado:
     print(f"Operador   | {resultado['operador']}")
