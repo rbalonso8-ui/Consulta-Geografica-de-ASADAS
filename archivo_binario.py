@@ -6,16 +6,6 @@ import time as t
 TAMAÑO_REGISTRO = 6+170+12+22+27+22+22+17+40+17+4
 
 url = "https://datos.aresep.go.cr/ws.datosabiertos/Services/IA/Asadas.svc/ObtenerInformacionUbicacionAsadas"
-if "asadas.json" not in os.listdir():
-    respuesta = requests.get(url)
-    datos = respuesta.json()
-    with open("asadas.json", "w", encoding="utf-8") as archivo:
-        json.dump(datos, archivo, indent=4, ensure_ascii=False)
-    print("Archivo JSON guardado correctamente.")
-else:
-    with open("asadas.json", "r", encoding="utf-8") as archivo:
-        datos = json.load(archivo)
-    print("Archivo JSON cargado desde disco.")
     
 def campo_texto(valor: str, n: int) -> bytes:
     """Convierte un valor de bytes de longitud exacta n
@@ -96,6 +86,17 @@ def leer_texto_binario(posicion: int) -> dict:
     }
 
 if __name__ == "__main__":
+    if "asadas.json" not in os.listdir():
+        respuesta = requests.get(url)
+        datos = respuesta.json()
+        with open("asadas.json", "w", encoding="utf-8") as archivo:
+            json.dump(datos, archivo, indent=4, ensure_ascii=False)
+        print("Archivo JSON guardado correctamente.")
+    else:
+        with open("asadas.json", "r", encoding="utf-8") as archivo:
+            datos = json.load(archivo)
+        print("Archivo JSON cargado desde disco.")
+
     t.sleep(1.5)
     print("\033c")
     id_buscar = input("Ingrese el ID de la ASADA a buscar: ")
@@ -104,16 +105,16 @@ if __name__ == "__main__":
     escribir_texto_binario(datos["value"])
     
 
-if resultado:
-    print(f"Operador   | {resultado['operador']}")
-    print(f"Provincia  | {resultado['provincia']}")
-    print(f"Cantón     | {resultado['canton']}")
-    print(f"Distrito   | {resultado['distrito']}")
-    print(f"Teléfono   | {resultado['telefono']}")
-    print(f"Correo     | {resultado['correo']}")
-    print(f"Tipo Sistema: {resultado['tipoSistema']}")
-    print(f"Coordenadas: X={resultado['coordenadaX'].strip()}, Y={resultado['coordenadaY'].strip()}")
-else:
-    print(f"No se encontró ninguna ASADA con ID {id_buscar}")
+    if resultado:
+        print(f"Operador   | {resultado['operador']}")
+        print(f"Provincia  | {resultado['provincia']}")
+        print(f"Cantón     | {resultado['canton']}")
+        print(f"Distrito   | {resultado['distrito']}")
+        print(f"Teléfono   | {resultado['telefono']}")
+        print(f"Correo     | {resultado['correo']}")
+        print(f"Tipo Sistema: {resultado['tipoSistema']}")
+        print(f"Coordenadas: X={resultado['coordenadaX'].strip()}, Y={resultado['coordenadaY'].strip()}")
+    else:
+        print(f"No se encontró ninguna ASADA con ID {id_buscar}")
 
     escribir_texto_binario(datos["value"])

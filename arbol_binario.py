@@ -109,7 +109,7 @@ def buscar(árbol: ArbolBinario, id_asada: str) -> int:
  
  
  
-def guardar_árbol(árbol: ArbolBinario, nombre_archivo: str = "árbol_binario.bin"):
+def guardar_árbol(árbol: ArbolBinario, nombre_archivo: str = "arbol_binario.bin"):
     """Escribe el árbol completo en un archivo binario.
 
     Args:
@@ -143,8 +143,9 @@ def guardar_árbol(árbol: ArbolBinario, nombre_archivo: str = "árbol_binario.b
  
  
  
-def cargar_árbol(nombre_archivo: str = "árbol_binario.bin") -> ArbolBinario:
-    """Lee árbol_binario.bin y reconstruye el árbol de objetos en memoria.
+ 
+def cargar_árbol(nombre_archivo: str = "arbol_binario.bin") -> ArbolBinario:
+    """Lee arbol_binario.bin y reconstruye el árbol de objetos en memoria.
 
     Args:
         nombre_archivo (str): Nombre del archivo a leer
@@ -177,19 +178,19 @@ def cargar_árbol(nombre_archivo: str = "árbol_binario.bin") -> ArbolBinario:
     árbol = ArbolBinario()
     árbol.raíz = nodos[0] if nodos else None
  
-    print(f"árbol_binario.bin cargado — {len(nodos)} nodos")
+    print(f"arbol_binario.bin cargado — {len(nodos)} nodos")
     return árbol
  
  
  
 def construir(lista_asadas: list) -> ArbolBinario:
-    """Construye el árbol binario balanceado desde la lista de ASADAs y guarda árbol_binario.bin.
+    """Construye el árbol binario balanceado desde la lista de ASADAs y guarda arbol_binario.bin.
  
     Args:
         lista_asadas (list): Lista de dicts con los datos de cada ASADA
  
     Returns:
-        ArbolBinario: El árbol construido y guardado en árbol_binario.bin
+        ArbolBinario: El árbol construido y guardado en arbol_binario.bin
     """
     lista = sorted(
         [(str(a.get("id_Asada") or "").strip(), i) for i, a in enumerate(lista_asadas)],
