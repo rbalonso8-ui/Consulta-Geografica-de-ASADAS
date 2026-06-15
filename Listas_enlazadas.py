@@ -303,8 +303,19 @@ def leer_asada(archivo:str, posición:int) -> ASADA:
     nodo.sig_asada = bytes_a_entero(archivo.read(4))
     return nodo
 
-
-
+def obtener_provincias() -> list[str]:
+    """Obtiene los nombres de todas las provincias registradas."""
+    provincias = []
+    with open("provincias.bin", "rb") as doc:
+        indice = 0
+        while True:
+            nodo = leer_provincia(doc, indice)
+            provincias.append(nodo.nombre)
+            if nodo.sig_provincia == -1:
+                break
+            indice = nodo.sig_provincia
+    return provincias
+    
 def obtener_cantones(nombre_provincia: str)-> list[str]:
     """Obtiene todos los cantones guardados dentro de una Provincia
 
