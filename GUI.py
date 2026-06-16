@@ -138,10 +138,9 @@ class AplicacionGUI:
             self.combo_provincia["values"] = sorted(self.jerarquia.keys())
             self.combo_canton["values"] = self._todos_los_cantones()
             self.combo_distrito["values"] = self._todos_los_distritos()
-            self.etiqueta_estado.config(text=f"Conectado a {HOST}:{PORT}", foreground="green")
+            self.combo_asada["values"] = self._todas_las_asadas()
         except Exception as error:
             messagebox.showerror("Error de conexión", f"No se pudo conectar al servidor:\n{error}")
-            self.etiqueta_estado.config(text="Sin conexión", foreground="red")
 
     def _todos_los_cantones(self) -> list:
         """Devuelve la lista ordenada de todos los cantones de todas las provincias
@@ -166,18 +165,45 @@ class AplicacionGUI:
                 distritos.extend(self.jerarquia[provincia][cantón])
         return sorted(set(distritos))
 
+    def _todas_las_asadas(self) -> list:
+        """Pide al servidor los códigos de todas las ASADAs de todas las provincias
+
+        Returns:
+            list: Lista de códigos de ASADA de todo el país
+        """
+        códigos = []
+        for provincia in sorted(self.jerarquia.keys()):
+            códigos.extend(self._códigos_por_peticion(f"ASADAS|{provincia}"))
+        return códigos
+
+    def _códigos_por_peticion(self, peticion: str) -> list:
+        """Envía una petición de ASADAS al servidor y extrae solo los códigos
+
+        Args:
+            peticion (str): Petición ASADAS con el nivel deseado
+
+        Returns:
+            list: Lista de códigos de ASADA, o lista vacía si no hubo resultados
+        """
+        if not self.conexión:
+            return []
+        respuesta = enviar_peticion(self.entrada, self.salida, peticion)
+        if respuesta[0] != "OK":
+            return []
+        return [fila.split(";")[0] for fila in respuesta[1:]]
+
     def _construir_widgets(self):
         """Crea y posiciona todos los componentes visuales de la ventana"""
-        marco_busqueda = ttk.LabelFrame(self.ventana, text="Buscar ASADA por código")
+        marco_busqueda = ttk.LabelFrame(self.ventana, text="Buscar ASADA")
         marco_busqueda.pack(fill="x", padx=10, pady=8)
 
-        ttk.Label(marco_busqueda, text="Código de la ASADA:").grid(row=0, column=0, padx=6, pady=8, sticky="w")
+        ttk.Label(marco_busqueda, text="ID de la ASADA:").grid(row=0, column=0, padx=6, pady=8, sticky="w")
         self.entrada_id = ttk.Entry(marco_busqueda, width=20)
         self.entrada_id.grid(row=0, column=1, padx=6, pady=8, sticky="w")
         ttk.Button(marco_busqueda, text="Buscar", command=self.buscar_por_id).grid(row=0, column=2, padx=6, pady=8)
         ttk.Button(marco_busqueda, text="Ver en mapa", command=self.ver_en_mapa).grid(row=0, column=3, padx=6, pady=8)
 
-        marco_geo = ttk.LabelFrame(self.ventana, text="Consulta por división geográfica")
+        marco_geo = ttk.LabelFrame(self.ventana, text="Buscar ASADA por zona")
         marco_geo.pack(fill="x", padx=10, pady=8)
 
         ttk.Label(marco_geo, text="Provincia:").grid(row=0, column=0, padx=6, pady=6, sticky="w")
@@ -198,6 +224,7 @@ class AplicacionGUI:
         ttk.Label(marco_geo, text="ASADA:").grid(row=3, column=0, padx=6, pady=6, sticky="w")
         self.combo_asada = ttk.Combobox(marco_geo, state="readonly", width=30)
         self.combo_asada.grid(row=3, column=1, padx=6, pady=6, sticky="w")
+        self.combo_asada.bind("<<ComboboxSelected>>", self.al_seleccionar_asada)
         ttk.Button(marco_geo, text="Mostrar", command=self.mostrar_asada_combo).grid(row=3, column=2, padx=6, pady=6)
         ttk.Button(marco_geo, text="Ver en mapa", command=self.ver_en_mapa_combo).grid(row=3, column=3, padx=6, pady=6)
 
@@ -212,9 +239,6 @@ class AplicacionGUI:
         barra.pack(side="right", fill="y", pady=6)
         self.texto_resultado.config(yscrollcommand=barra.set)
 
-        self.etiqueta_estado = ttk.Label(self.ventana, text="Conectando...", foreground="gray")
-        self.etiqueta_estado.pack(fill="x", padx=10, pady=(0, 8))
-
     def _escribir_resultado(self, texto: str):
         """Reemplaza el contenido de la caja de resultados con el texto dado
 
@@ -225,7 +249,11 @@ class AplicacionGUI:
         self.texto_resultado.insert("1.0", texto)
 
     def al_seleccionar_provincia(self, evento=None):
-        """Limita los cantones a la provincia elegida y actualiza la tabla de resultados
+        """Filtra cantón, distrito y ASADA a la provincia elegida y actualiza la tabla
+
+        Las listas inferiores se llenan con las opciones de la provincia (no se
+        vacían), de modo que el usuario puede saltar directamente a elegir un
+        distrito o una ASADA sin pasar por el cantón.
 
         Args:
             evento: Evento de selección del combo (no se usa)
@@ -235,19 +263,18 @@ class AplicacionGUI:
         self.actualizando = True
 
         provincia = self.combo_provincia.get()
-        cantones = sorted(self.jerarquia.get(provincia, {}).keys())
-        self.combo_canton["values"] = cantones
+        self.combo_canton["values"] = sorted(self.jerarquia.get(provincia, {}).keys())
+        self.combo_distrito["values"] = self._distritos_de_provincia(provincia)
         self.combo_canton.set("")
-        self.combo_distrito["values"] = []
         self.combo_distrito.set("")
-        self.combo_asada["values"] = []
         self.combo_asada.set("")
+        self.combo_asada["values"] = self._códigos_por_peticion(f"ASADAS|{provincia}")
 
         self.actualizando = False
         self._actualizar_tabla()
 
     def al_seleccionar_canton(self, evento=None):
-        """Autocompleta la provincia, limita los distritos y actualiza la tabla
+        """Autocompleta la provincia y filtra distrito y ASADA al cantón elegido
 
         Si el usuario elige un cantón sin haber elegido provincia, esta se completa
         automáticamente a partir de la jerarquía en memoria.
@@ -269,17 +296,16 @@ class AplicacionGUI:
                 self.combo_canton["values"] = sorted(self.jerarquia[provincia].keys())
                 self.combo_canton.set(cantón)
 
-        distritos = self.jerarquia.get(provincia, {}).get(cantón, [])
-        self.combo_distrito["values"] = sorted(distritos)
+        self.combo_distrito["values"] = sorted(self.jerarquia.get(provincia, {}).get(cantón, []))
         self.combo_distrito.set("")
-        self.combo_asada["values"] = []
         self.combo_asada.set("")
+        self.combo_asada["values"] = self._códigos_por_peticion(f"ASADAS|{provincia}|{cantón}")
 
         self.actualizando = False
         self._actualizar_tabla()
 
     def al_seleccionar_distrito(self, evento=None):
-        """Autocompleta provincia y cantón, llena el combo ASADA y actualiza la tabla
+        """Autocompleta provincia y cantón, filtra la ASADA al distrito y actualiza la tabla
 
         Permite "brincar" niveles: si el usuario elige solo un distrito, la provincia
         y el cantón correspondientes se completan automáticamente.
@@ -300,31 +326,63 @@ class AplicacionGUI:
             self.combo_canton.set(cantón)
             self.combo_distrito["values"] = sorted(self.jerarquia[provincia][cantón])
             self.combo_distrito.set(distrito)
-            self._cargar_asadas_combo(provincia, cantón, distrito)
+            self.combo_asada.set("")
+            self.combo_asada["values"] = self._códigos_por_peticion(f"ASADAS|{provincia}|{cantón}|{distrito}")
 
         self.actualizando = False
         self._actualizar_tabla()
 
-    def _cargar_asadas_combo(self, provincia: str, cantón: str, distrito: str):
-        """Pide al servidor las ASADAs del distrito y llena el combo con sus códigos
+    def al_seleccionar_asada(self, evento=None):
+        """Autocompleta provincia, cantón y distrito a partir de la ASADA elegida
+
+        Consulta al servidor los datos de la ASADA seleccionada y rellena los tres
+        combos superiores con su ubicación geográfica.
 
         Args:
-            provincia (str): Provincia seleccionada
-            cantón (str): Cantón seleccionado
-            distrito (str): Distrito seleccionado
+            evento: Evento de selección del combo (no se usa)
         """
-        self.combo_asada.set("")
-        if not self.conexión:
-            self.combo_asada["values"] = []
+        if self.actualizando:
             return
+        self.actualizando = True
 
-        respuesta = enviar_peticion(self.entrada, self.salida, f"ASADAS|{provincia}|{cantón}|{distrito}")
-        if respuesta[0] != "OK":
-            self.combo_asada["values"] = []
-            return
+        id_asada = self.combo_asada.get()
+        respuesta = enviar_peticion(self.entrada, self.salida, f"BUSCAR_ID|{id_asada}")
 
-        códigos = [fila.split(";")[0] for fila in respuesta[1:]]
-        self.combo_asada["values"] = códigos
+        if respuesta[0] == "OK":
+            datos = {}
+            for línea in respuesta[1:]:
+                clave, _, valor = línea.partition("=")
+                datos[clave] = valor
+
+            provincia = datos.get("provincia", "").strip().upper()
+            cantón = datos.get("canton", "").strip().upper()
+            distrito = datos.get("distrito", "").strip().upper()
+
+            if provincia in self.jerarquia:
+                self.combo_provincia.set(provincia)
+                self.combo_canton["values"] = sorted(self.jerarquia[provincia].keys())
+                self.combo_canton.set(cantón)
+                self.combo_distrito["values"] = sorted(self.jerarquia[provincia].get(cantón, []))
+                self.combo_distrito.set(distrito)
+                self.combo_asada["values"] = self._códigos_por_peticion(f"ASADAS|{provincia}|{cantón}|{distrito}")
+                self.combo_asada.set(id_asada)
+
+        self.actualizando = False
+        self._mostrar_datos_id(id_asada)
+
+    def _distritos_de_provincia(self, provincia: str) -> list:
+        """Devuelve todos los distritos de una provincia, de todos sus cantones
+
+        Args:
+            provincia (str): Nombre de la provincia
+
+        Returns:
+            list: Lista ordenada de distritos de la provincia
+        """
+        distritos = []
+        for cantón in self.jerarquia.get(provincia, {}):
+            distritos.extend(self.jerarquia[provincia][cantón])
+        return sorted(set(distritos))
 
     def _actualizar_tabla(self):
         """Actualiza la tabla de resultados según el nivel geográfico llenado
@@ -373,21 +431,19 @@ class AplicacionGUI:
         self._escribir_resultado("\n".join(líneas))
 
     def limpiar_combos(self):
-        """Reinicia los cuatro combos, restaura sus listas y limpia la tabla"""
+        """Reinicia los cuatro combos, restaura todas sus listas y limpia la tabla"""
         self.actualizando = True
         self.combo_provincia.set("")
         self.combo_canton.set("")
         self.combo_distrito.set("")
         self.combo_asada.set("")
-        self.combo_asada["values"] = []
         self.combo_provincia["values"] = sorted(self.jerarquia.keys())
         self.combo_canton["values"] = self._todos_los_cantones()
         self.combo_distrito["values"] = self._todos_los_distritos()
+        self.combo_asada["values"] = self._todas_las_asadas()
         self.actualizando = False
         self._escribir_resultado("")
 
-    def buscar_por_id(self):
-        """Solicita al servidor una ASADA por su código y muestra sus datos"""
     def _mostrar_datos_id(self, id_asada: str):
         """Solicita al servidor los datos de una ASADA y los muestra en resultados
 
