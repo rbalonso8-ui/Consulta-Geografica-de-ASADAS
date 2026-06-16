@@ -7,6 +7,7 @@ import json
 import arbol_binario as ab
 import archivo_binario as arc
 import Listas_enlazadas as le
+import actualizacion as act
 import Mapa as mp
 
 HOST = "0.0.0.0"   
@@ -23,31 +24,19 @@ def preparar_estructuras():
     todavía, se construye a partir de 'asadas.json'.
     """
     global arbol
-
-    if not os.path.exists("asadas.json"):
-        raise FileNotFoundError(
-            "No se encontró 'asadas.json'. Es necesario para construir las estructuras."
-        )
-
-    with open("asadas.json", "r", encoding="utf-8") as f:
-        datos = json.load(f)
-
-    lista_asadas = datos["value"]
-
-    # Árbol binario + archivo principal (búsqueda por ID)
-    if not os.path.exists("asadas_principal.bin"):
-        arc.escribir_texto_binario(lista_asadas)
-
-    if not os.path.exists("arbol_binario.bin"):
-        ab.construir(lista_asadas)
-
+ 
+    try:
+        act.actualizar()
+    except Exception as error:
+        print(f"[SERVIDOR] No se pudo verificar la actualización remota: {error}")
+        if not act.estructuras_completas():
+            raise FileNotFoundError(
+                "No hay estructuras locales ni conexión con el endpoint. "
+                "Ejecute la actualización desde un equipo con acceso a internet."
+            )
+        print("[SERVIDOR] Se usarán las estructuras locales existentes.")
+ 
     arbol = ab.cargar_árbol()
-
-    # Listas enlazadas de división política (Provincia/Cantón/Distrito/ASADA)
-    archivos_division = ("provincias.bin", "cantones.bin", "distritos.bin", "ASADAS.bin")
-    if not all(os.path.exists(f) for f in archivos_division):
-        le.construir(lista_asadas)
-
     print("[SERVIDOR] Estructuras de datos cargadas correctamente en memoria.")
 
 
@@ -55,10 +44,13 @@ def preparar_estructuras():
 #  Funciones de consulta (envuelven a los módulos ya existentes)
 # ------------------------------------------------------------------
 def buscar_id(id_asada: str):
-    """Busca una ASADA por su ID usando el árbol binario + archivo principal.
-
+    """Busca una ASADA por su ID usando el árbol binario y el archivo principal
+ 
+    Args:
+        id_asada (str): Identificador de la ASADA a buscar
+ 
     Returns:
-        dict | None: datos completos de la ASADA, o None si no existe
+        dict | None: Datos completos de la ASADA, o None si no existe
     """
     with lock:
         posición = ab.buscar(arbol, id_asada.strip())
@@ -67,8 +59,13 @@ def buscar_id(id_asada: str):
         return arc.leer_texto_binario(posición)
 
 def manejar_peticion(linea: str) -> list[str]:
-    """Interpreta una línea de petición del cliente y devuelve la
-    lista de líneas que conforman la respuesta (incluyendo "FIN").
+    """Interpreta una línea de petición del cliente y devuelve la respuesta
+ 
+    Args:
+        linea (str): Línea de petición recibida del cliente
+ 
+    Returns:
+        list[str]: Lista de líneas de respuesta, incluyendo la línea final "FIN"
     """
     partes = linea.strip().split("|")
     comando = partes[0].strip().upper() if partes else ""
@@ -123,6 +120,13 @@ def manejar_peticion(linea: str) -> list[str]:
                     )
             respuesta.append("FIN")
             return respuesta
+        elif comando == "MAPA" and len(partes) == 2:
+            datos = buscar_id(partes[1])
+            if datos is None:
+                return ["ERROR", f"No se encontró ninguna ASADA con ID {partes[1]}", "FIN"]
+            with lock:
+                mp.generar_mapa(datos)
+            return ["OK", "Mapa generado en el servidor", "FIN"]
 
         else:
             return ["ERROR", f"Comando inválido o mal formado: '{linea.strip()}'", "FIN"]
@@ -135,6 +139,10 @@ def atender_cliente(conexión: socket.socket, dirección):
 
     Lee peticiones línea por línea, las procesa y devuelve la
     respuesta correspondiente, hasta que el cliente cierra la conexión.
+    
+    Args:
+        conexión (socket.socket): Socket de la conexión con el cliente
+        dirección: Dirección (IP, puerto) del cliente conectado
     """
     print(f"[SERVIDOR] Cliente conectado desde {dirección}")
 
@@ -160,6 +168,8 @@ def atender_cliente(conexión: socket.socket, dirección):
         print(f"[SERVIDOR] Cliente desconectado: {dirección}")
 
 def iniciar_servidor():
+    """Inicia el servidor, prepara las estructuras y atiende clientes con hilos
+    """
     preparar_estructuras()
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as servidor:
