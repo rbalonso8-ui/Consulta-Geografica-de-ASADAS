@@ -14,8 +14,8 @@ class Provincia:
             nombre (str): nombre de la provincia
         """
         self.nombre = nombre
-        self.sig_provincia: Provincia = -1
-        self.cantón: Cantón = -1
+        self.sig_provincia: int = -1
+        self.cantón: int = -1
 
 class Cantón:
     """Representa un Canton como una lista enlazada
@@ -27,8 +27,8 @@ class Cantón:
             nombre (str): nombre del cantón
         """
         self.nombre = nombre
-        self.sig_cantón: Cantón = -1
-        self.distrito: Distrito = -1
+        self.sig_cantón: int = -1
+        self.distrito: int = -1
 
 class Distrito:
     """Representa un distrito como una lista enlazada
@@ -40,8 +40,8 @@ class Distrito:
             nombre (str): nombre del distrito
         """
         self.nombre = nombre
-        self.sig_distrito: Distrito = -1
-        self.asada: ASADA = -1
+        self.sig_distrito: int = -1
+        self.asada: int = -1
         
 class ASADA:
     """Representa una ASADA como una lista enlazada
@@ -55,7 +55,7 @@ class ASADA:
         """
         self.id_asada = id_asada    
         self.posicion = posicion
-        self.sig_asada: ASADA = -1
+        self.sig_asada: int = -1
  
  
         
@@ -102,7 +102,7 @@ def bytes_a_texto(bytes: bytes)-> str:
     Returns:
         str: El texto convertido desde bytes, sin los caracteres de relleno
     """
-    return bytes.decode('utf-8').rstrip('\x00')
+    return bytes.decode('utf-8').rstrip('\x00').rstrip()
 
 
 
@@ -249,7 +249,7 @@ def leer_provincia(archivo:str, posición:int) -> Provincia:
         Provincia(Provincia): El nodo de provincia leído desde el archivo
     """
     archivo.seek(posición * TAMAÑO)
-    nodo = Provincia(archivo.read(50).decode("utf-8").rstrip("\x00").rstrip())
+    nodo = Provincia(bytes_a_texto(archivo.read(50)))
     nodo.sig_provincia = bytes_a_entero(archivo.read(4))
     nodo.cantón = bytes_a_entero(archivo.read(4))
     return nodo
@@ -265,7 +265,7 @@ def leer_cantón(archivo:str, posición:int) -> Cantón:
         Cantón(Cantón): El nodo de cantón leído desde el archivo
     """
     archivo.seek(posición * TAMAÑO)
-    nodo = Cantón(archivo.read(50).decode("utf-8").rstrip("\x00").rstrip())
+    nodo = Cantón(bytes_a_texto(archivo.read(50)))
     nodo.sig_cantón = bytes_a_entero(archivo.read(4))
     nodo.distrito = bytes_a_entero(archivo.read(4))
     return nodo
@@ -281,7 +281,7 @@ def leer_distrito(archivo:str, posición:int) -> Distrito:
         Distrito(Distrito): El nodo de distrito leído desde el archivo
     """
     archivo.seek(posición * TAMAÑO)
-    nodo = Distrito(archivo.read(50).decode("utf-8").rstrip("\x00").rstrip())
+    nodo = Distrito(bytes_a_texto(archivo.read(50)))
     nodo.sig_distrito = bytes_a_entero(archivo.read(4))
     nodo.asada = bytes_a_entero(archivo.read(4))
     return nodo
@@ -297,7 +297,7 @@ def leer_asada(archivo:str, posición:int) -> ASADA:
         ASADA(ASADA): El nodo de ASADA leído desde el archivo
     """
     archivo.seek(posición * TAMAÑO_ASADA)
-    id_asada = archivo.read(10).decode("utf-8").rstrip("\x00").rstrip()
+    id_asada = bytes_a_texto(archivo.read(10))
     posicion = bytes_a_entero(archivo.read(4))
     nodo = ASADA(id_asada, posicion)
     nodo.sig_asada = bytes_a_entero(archivo.read(4))
@@ -428,6 +428,10 @@ if __name__ == "__main__":
     with open("asadas.json", "r", encoding="utf-8") as f:
         datos = json.load(f)
     construir(datos["value"])
+    
+    print ("\nPrueba provincias:")
+    for provincia in obtener_provincias():
+        print(" ", provincia)
 
     print("\nPrueba cantones de Alajuela:")
     for cantón in obtener_cantones("ALAJUELA"):
