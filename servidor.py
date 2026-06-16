@@ -14,13 +14,14 @@ arbol = None
 
 lock = threading.Lock()
 
+contador_clientes = 0
+
+servidor_escuchando = threading.Event()
+
 
 def preparar_estructuras():
-    """Garantiza que existan los archivos binarios y carga el árbol en memoria
-
-    Verifica los datos remotos mediante el módulo de actualización incremental:
-    si hay cambios o faltan archivos, regenera las estructuras. Si no hay conexión
-    con el endpoint, intenta trabajar con los archivos binarios existentes en disco.
+    """Garantiza que existan los archivos binarios y carga el árbol en memoria Verifica los datos remotos mediante el módulo de actualización incremental:
+    si hay cambios o faltan archivos, regenera las estructuras. Si no hay conexión con el endpoint, intenta trabajar con los archivos binarios existentes en disco.
     """
     global arbol
 
@@ -138,7 +139,22 @@ def manejar_peticion(linea: str) -> list[str]:
         return ["ERROR", f"Error interno del servidor: {error}", "FIN"]
 
 
-def atender_cliente(conexión: socket.socket, dirección):
+def etiqueta_cliente(numero: int) -> str:
+    """Devuelve el nombre con que se identifica una conexión en los registros
+
+    La primera conexión (la del equipo que levantó el servidor) se identifica
+    como "Host"; de la segunda en adelante son "Cliente 1", "Cliente 2", etc.
+
+    Args:
+        numero (int): Número secuencial de la conexión (1 es el primero)
+
+    Returns:
+        str: Etiqueta legible para los registros del servidor
+    """
+    return "Host" if numero == 1 else f"Cliente {numero - 1}"
+
+
+def atender_cliente(conexión: socket.socket, dirección, numero: int):
     """Atiende a un cliente remoto en un hilo independiente
 
     Lee peticiones línea por línea, las procesa y devuelve la respuesta
@@ -147,8 +163,10 @@ def atender_cliente(conexión: socket.socket, dirección):
     Args:
         conexión (socket.socket): Socket de la conexión con el cliente
         dirección: Dirección (IP, puerto) del cliente conectado
+        numero (int): Identificador secuencial asignado a esta conexión
     """
-    print(f"[SERVIDOR] Cliente conectado desde {dirección}")
+    nombre = etiqueta_cliente(numero)
+    print(f"[SERVIDOR] {nombre} conectado desde {dirección}")
 
     try:
         with conexión:
@@ -159,7 +177,7 @@ def atender_cliente(conexión: socket.socket, dirección):
                 if not línea.strip():
                     continue
 
-                print(f"[SERVIDOR] {dirección} -> {línea.strip()}")
+                print(f"[SERVIDOR] {nombre} -> {línea.strip()}")
                 respuesta = manejar_peticion(línea)
 
                 for línea_respuesta in respuesta:
@@ -169,11 +187,12 @@ def atender_cliente(conexión: socket.socket, dirección):
     except (ConnectionResetError, BrokenPipeError):
         pass
     finally:
-        print(f"[SERVIDOR] Cliente desconectado: {dirección}")
+        print(f"[SERVIDOR] {nombre} desconectado ({dirección})")
 
 
 def iniciar_servidor():
     """Inicia el servidor: prepara las estructuras y atiende clientes con hilos"""
+    global contador_clientes
     preparar_estructuras()
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as servidor:
@@ -183,12 +202,16 @@ def iniciar_servidor():
         servidor.bind((HOST, PORT))
         servidor.listen()
         print(f"[SERVIDOR] Escuchando conexiones en {HOST}:{PORT} ...")
+        servidor_escuchando.set()
 
         while True:
             conexión, dirección = servidor.accept()
+            with lock:
+                contador_clientes += 1
+                numero = contador_clientes
             hilo = threading.Thread(
                 target=atender_cliente,
-                args=(conexión, dirección),
+                args=(conexión, dirección, numero),
                 daemon=True,
             )
             hilo.start()

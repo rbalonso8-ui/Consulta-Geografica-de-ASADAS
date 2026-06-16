@@ -105,7 +105,7 @@ def buscar_camino_canton(jerarquia: dict, cantón: str) -> str:
 
 
 class AplicacionGUI:
-    """Interfaz gráfica de consulta remota de ASADAS conectada al servidor por sockets
+    """Interfaz gráfica de consulta geografíca de ASADAS conectada al servidor por sockets
     """
     def __init__(self, ventana: tk.Tk):
         """Constructor de la aplicación gráfica
@@ -114,7 +114,7 @@ class AplicacionGUI:
             ventana (tk.Tk): Ventana raíz de Tkinter
         """
         self.ventana = ventana
-        self.ventana.title("Consulta remota de ASADAS")
+        self.ventana.title("Consulta Geografíca de ASADAS")
         self.ventana.geometry("760x620")
 
         self.conexión = None
@@ -194,16 +194,28 @@ class AplicacionGUI:
 
     def _construir_widgets(self):
         """Crea y posiciona todos los componentes visuales de la ventana"""
+        estilo = ttk.Style()
+        estilo.theme_use("clam")  # "clam" sí respeta los colores de fondo en Mac
+        estilo.configure("Azul.TButton", foreground="white", background="#2563eb",
+                         font=("Helvetica", 11, "bold"))
+        estilo.map("Azul.TButton", background=[("active", "#1e40af")])
+        estilo.configure("Verde.TButton", foreground="white", background="#16a34a",
+                         font=("Helvetica", 11, "bold"))
+        estilo.map("Verde.TButton", background=[("active", "#15803d")])
+        estilo.configure("Rojo.TButton", foreground="white", background="#dc2626",
+                         font=("Helvetica", 11, "bold"))
+        estilo.map("Rojo.TButton", background=[("active", "#b91c1c")])
+
         marco_busqueda = ttk.LabelFrame(self.ventana, text="Buscar ASADA")
         marco_busqueda.pack(fill="x", padx=10, pady=8)
 
         ttk.Label(marco_busqueda, text="ID de la ASADA:").grid(row=0, column=0, padx=6, pady=8, sticky="w")
         self.entrada_id = ttk.Entry(marco_busqueda, width=20)
         self.entrada_id.grid(row=0, column=1, padx=6, pady=8, sticky="w")
-        ttk.Button(marco_busqueda, text="Buscar", command=self.buscar_por_id).grid(row=0, column=2, padx=6, pady=8)
-        ttk.Button(marco_busqueda, text="Ver en mapa", command=self.ver_en_mapa).grid(row=0, column=3, padx=6, pady=8)
+        ttk.Button(marco_busqueda, text="Buscar", command=self.buscar_por_id, style="Azul.TButton").grid(row=0, column=2, padx=6, pady=8)
+        ttk.Button(marco_busqueda, text="Ver en mapa", command=self.ver_en_mapa, style="Verde.TButton").grid(row=0, column=3, padx=6, pady=8)
 
-        marco_geo = ttk.LabelFrame(self.ventana, text="Buscar ASADA por zona")
+        marco_geo = ttk.LabelFrame(self.ventana, text="Buscar ASADA")
         marco_geo.pack(fill="x", padx=10, pady=8)
 
         ttk.Label(marco_geo, text="Provincia:").grid(row=0, column=0, padx=6, pady=6, sticky="w")
@@ -225,12 +237,12 @@ class AplicacionGUI:
         self.combo_asada = ttk.Combobox(marco_geo, state="readonly", width=30)
         self.combo_asada.grid(row=3, column=1, padx=6, pady=6, sticky="w")
         self.combo_asada.bind("<<ComboboxSelected>>", self.al_seleccionar_asada)
-        ttk.Button(marco_geo, text="Mostrar", command=self.mostrar_asada_combo).grid(row=3, column=2, padx=6, pady=6)
-        ttk.Button(marco_geo, text="Ver en mapa", command=self.ver_en_mapa_combo).grid(row=3, column=3, padx=6, pady=6)
+        ttk.Button(marco_geo, text="Mostrar", command=self.mostrar_asada_combo, style="Azul.TButton").grid(row=3, column=2, padx=6, pady=6)
+        ttk.Button(marco_geo, text="Ver en mapa", command=self.ver_en_mapa_combo, style="Verde.TButton").grid(row=3, column=3, padx=6, pady=6)
 
-        ttk.Button(marco_geo, text="Limpiar", command=self.limpiar_combos).grid(row=4, column=1, padx=6, pady=8, sticky="w")
+        ttk.Button(marco_geo, text="Limpiar", command=self.limpiar_combos, style="Rojo.TButton").grid(row=4, column=1, padx=6, pady=8, sticky="w")
 
-        marco_resultado = ttk.LabelFrame(self.ventana, text="Resultados")
+        marco_resultado = ttk.LabelFrame(self.ventana, text="ASADAS")
         marco_resultado.pack(fill="both", expand=True, padx=10, pady=8)
 
         self.texto_resultado = tk.Text(marco_resultado, wrap="none", height=15)

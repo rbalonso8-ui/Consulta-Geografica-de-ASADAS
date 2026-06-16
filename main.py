@@ -1,6 +1,5 @@
 import socket
 import threading
-import time
 
 import servidor
 import GUI
@@ -26,46 +25,21 @@ def hay_servidor(host: str, port: int) -> bool:
         return False
 
 
-def esperar_servidor(host: str, port: int, intentos: int = 30) -> bool:
-    """Espera hasta que el servidor esté aceptando conexiones en el puerto dado
-
-    Intenta conectarse repetidamente para confirmar que el servidor ya terminó
-    de preparar las estructuras y está escuchando, antes de abrir la interfaz.
-
-    Args:
-        host (str): Dirección del servidor a comprobar
-        port (int): Puerto del servidor a comprobar
-        intentos (int): Número máximo de comprobaciones antes de rendirse
-
-    Returns:
-        bool: True si el servidor respondió, False si se agotaron los intentos
-    """
-    for x in range(intentos):
-        if hay_servidor(host, port):
-            return True
-        time.sleep(1)
-    return False
-
-
 def main():
     """Flujo principal del sistema con detección automática de rol
-
-    Al arrancar comprueba si ya existe un servidor en el puerto. Si no lo hay,
-    esta instancia levanta el servidor central en segundo plano y luego abre la
-    interfaz gráfica. Si ya existe un servidor, esta instancia se conecta a él
-    como un cliente más. Así main.py puede ejecutarse varias veces: la primera
-    monta el servidor y las siguientes actúan como clientes.
+    Al arrancar comprueba si ya existe un servidor en el puerto. Si no lo hay, esta instancia levanta el servidor centraly luego abre la interfaz gráfica. 
+    Si ya existe un servidor, esta instancia se conecta a él como un cliente más. Así main.py puede ejecutarse varias veces: la primera monta el servidor y las siguientes actúan como clientes.
     """
     if hay_servidor(HOST, PORT):
         print(f"Servidor detectado en {HOST}:{PORT}. Abriendo interfaz como cliente...")
         GUI.main()
         return
 
-    print("No hay servidor activo. Iniciando servido...")
+    print("No hay servidor activo. Iniciando servidor en segundo plano...")
     hilo_servidor = threading.Thread(target=servidor.iniciar_servidor, daemon=True)
     hilo_servidor.start()
 
-    if not esperar_servidor(HOST, PORT):
+    if not servidor.servidor_escuchando.wait(timeout=30):
         print("[ERROR] El servidor no respondió a tiempo. Abortando.")
         return
 

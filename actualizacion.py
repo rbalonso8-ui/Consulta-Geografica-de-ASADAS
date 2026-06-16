@@ -58,9 +58,7 @@ def descargar_datos() -> dict:
 
 
 def regenerar_estructuras(datos: dict):
-    """Regenera completamente los tres archivos binarios del sistema
-    Reconstruye el archivo principal de registros, el árbol binario indexado y la
-    estructura geográfica de listas enlazadas a partir de los datos dados
+    """Regenera completamente los tres archivos binarios del sistema Reconstruye el archivo principal de registros, el árbol binario indexado y la estructura geográfica de listas enlazadas a partir de los datos dados
 
     Args:
         datos (dict): Diccionario con la información de las ASADAs descargada del endpoint
@@ -123,7 +121,3 @@ def actualizar(forzar: bool = False) -> bool:
     regenerar_estructuras(datos)
     guardar_conteo_local(conteo_remoto)
     return True
-
-
-if __name__ == "__main__":
-    actualizar()
