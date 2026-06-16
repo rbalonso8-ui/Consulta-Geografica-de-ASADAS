@@ -1,8 +1,5 @@
-
 import socket
 import threading
-import os
-import json
 
 import arbol_binario as ab
 import archivo_binario as arc
@@ -10,7 +7,7 @@ import Listas_enlazadas as le
 import actualizacion as act
 import Mapa as mp
 
-HOST = "0.0.0.0"   
+HOST = "0.0.0.0"
 PORT = 5050
 
 arbol = None
@@ -19,12 +16,14 @@ lock = threading.Lock()
 
 
 def preparar_estructuras():
-    """Garantiza que existan los archivos binarios necesarios y carga
-    el árbol binario en memoria. Si algún archivo binario no existe
-    todavía, se construye a partir de 'asadas.json'.
+    """Garantiza que existan los archivos binarios y carga el árbol en memoria
+
+    Verifica los datos remotos mediante el módulo de actualización incremental:
+    si hay cambios o faltan archivos, regenera las estructuras. Si no hay conexión
+    con el endpoint, intenta trabajar con los archivos binarios existentes en disco.
     """
     global arbol
- 
+
     try:
         act.actualizar()
     except Exception as error:
@@ -35,20 +34,17 @@ def preparar_estructuras():
                 "Ejecute la actualización desde un equipo con acceso a internet."
             )
         print("[SERVIDOR] Se usarán las estructuras locales existentes.")
- 
+
     arbol = ab.cargar_árbol()
     print("[SERVIDOR] Estructuras de datos cargadas correctamente en memoria.")
 
 
-# ------------------------------------------------------------------
-#  Funciones de consulta (envuelven a los módulos ya existentes)
-# ------------------------------------------------------------------
 def buscar_id(id_asada: str):
     """Busca una ASADA por su ID usando el árbol binario y el archivo principal
- 
+
     Args:
         id_asada (str): Identificador de la ASADA a buscar
- 
+
     Returns:
         dict | None: Datos completos de la ASADA, o None si no existe
     """
@@ -58,12 +54,13 @@ def buscar_id(id_asada: str):
             return None
         return arc.leer_texto_binario(posición)
 
+
 def manejar_peticion(linea: str) -> list[str]:
     """Interpreta una línea de petición del cliente y devuelve la respuesta
- 
+
     Args:
         linea (str): Línea de petición recibida del cliente
- 
+
     Returns:
         list[str]: Lista de líneas de respuesta, incluyendo la línea final "FIN"
     """
@@ -103,12 +100,17 @@ def manejar_peticion(linea: str) -> list[str]:
                 return ["ERROR", f"No se encontraron distritos para '{partes[1]}' / '{partes[2]}'", "FIN"]
             return ["OK", *distritos, "FIN"]
 
-        elif comando == "ASADAS" and len(partes) == 4:
+        elif comando == "ASADAS" and 2 <= len(partes) <= 4:
             with lock:
-                ids = le.obtener_asadas(partes[1], partes[2], partes[3])
+                if len(partes) == 2:
+                    ids = le.obtener_asadas_de_provincia(partes[1])
+                elif len(partes) == 3:
+                    ids = le.obtener_asadas_de_canton(partes[1], partes[2])
+                else:
+                    ids = le.obtener_asadas(partes[1], partes[2], partes[3])
 
             if not ids:
-                return ["ERROR", f"No se encontraron ASADAS para '{partes[1]}' / '{partes[2]}' / '{partes[3]}'", "FIN"]
+                return ["ERROR", "No se encontraron ASADAS para la selección indicada", "FIN"]
 
             respuesta = ["OK"]
             for id_asada in ids:
@@ -120,6 +122,7 @@ def manejar_peticion(linea: str) -> list[str]:
                     )
             respuesta.append("FIN")
             return respuesta
+
         elif comando == "MAPA" and len(partes) == 2:
             datos = buscar_id(partes[1])
             if datos is None:
@@ -134,12 +137,13 @@ def manejar_peticion(linea: str) -> list[str]:
     except Exception as error:
         return ["ERROR", f"Error interno del servidor: {error}", "FIN"]
 
-def atender_cliente(conexión: socket.socket, dirección):
-    """Atiende a un cliente remoto en un hilo independiente.
 
-    Lee peticiones línea por línea, las procesa y devuelve la
-    respuesta correspondiente, hasta que el cliente cierra la conexión.
-    
+def atender_cliente(conexión: socket.socket, dirección):
+    """Atiende a un cliente remoto en un hilo independiente
+
+    Lee peticiones línea por línea, las procesa y devuelve la respuesta
+    correspondiente, hasta que el cliente cierra la conexión.
+
     Args:
         conexión (socket.socket): Socket de la conexión con el cliente
         dirección: Dirección (IP, puerto) del cliente conectado
@@ -167,13 +171,15 @@ def atender_cliente(conexión: socket.socket, dirección):
     finally:
         print(f"[SERVIDOR] Cliente desconectado: {dirección}")
 
+
 def iniciar_servidor():
-    """Inicia el servidor, prepara las estructuras y atiende clientes con hilos
-    """
+    """Inicia el servidor: prepara las estructuras y atiende clientes con hilos"""
     preparar_estructuras()
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as servidor:
         servidor.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        if hasattr(socket, "SO_REUSEPORT"):
+            servidor.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
         servidor.bind((HOST, PORT))
         servidor.listen()
         print(f"[SERVIDOR] Escuchando conexiones en {HOST}:{PORT} ...")

@@ -16,18 +16,25 @@ def enviar_peticion(entrada, salida, peticion: str) -> list[str]:
         peticion (str): Petición a enviar al servidor
 
     Returns:
-        list[str]: Líneas de la respuesta, sin incluir la línea final "FIN"
+        list[str]: Líneas de la respuesta, sin incluir la línea final "FIN". Si la
+            conexión falla o el servidor no responde, devuelve una respuesta de error.
     """
-    salida.write(peticion + "\n")
-    salida.flush()
+    try:
+        salida.write(peticion + "\n")
+        salida.flush()
 
-    respuesta = []
-    for línea in entrada:
-        línea = línea.rstrip("\n")
-        if línea == "FIN":
-            break
-        respuesta.append(línea)
-    return respuesta
+        respuesta = []
+        for línea in entrada:
+            línea = línea.rstrip("\n")
+            if línea == "FIN":
+                break
+            respuesta.append(línea)
+
+        if not respuesta:
+            return ["ERROR", "El servidor cerró la conexión o no devolvió datos."]
+        return respuesta
+    except (BrokenPipeError, ConnectionResetError, OSError):
+        return ["ERROR", "Se perdió la conexión con el servidor."]
 
 
 def construir_jerarquia(entrada, salida) -> dict:
@@ -188,8 +195,13 @@ class AplicacionGUI:
         self.combo_distrito.grid(row=2, column=1, padx=6, pady=6, sticky="w")
         self.combo_distrito.bind("<<ComboboxSelected>>", self.al_seleccionar_distrito)
 
-        ttk.Button(marco_geo, text="Ver ASADAS del distrito", command=self.ver_asadas_distrito).grid(row=3, column=1, padx=6, pady=8, sticky="w")
-        ttk.Button(marco_geo, text="Limpiar", command=self.limpiar_combos).grid(row=3, column=0, padx=6, pady=8, sticky="w")
+        ttk.Label(marco_geo, text="ASADA:").grid(row=3, column=0, padx=6, pady=6, sticky="w")
+        self.combo_asada = ttk.Combobox(marco_geo, state="readonly", width=30)
+        self.combo_asada.grid(row=3, column=1, padx=6, pady=6, sticky="w")
+        ttk.Button(marco_geo, text="Mostrar", command=self.mostrar_asada_combo).grid(row=3, column=2, padx=6, pady=6)
+        ttk.Button(marco_geo, text="Ver en mapa", command=self.ver_en_mapa_combo).grid(row=3, column=3, padx=6, pady=6)
+
+        ttk.Button(marco_geo, text="Limpiar", command=self.limpiar_combos).grid(row=4, column=1, padx=6, pady=8, sticky="w")
 
         marco_resultado = ttk.LabelFrame(self.ventana, text="Resultados")
         marco_resultado.pack(fill="both", expand=True, padx=10, pady=8)
@@ -213,7 +225,7 @@ class AplicacionGUI:
         self.texto_resultado.insert("1.0", texto)
 
     def al_seleccionar_provincia(self, evento=None):
-        """Limita los cantones a la provincia elegida y reinicia distrito
+        """Limita los cantones a la provincia elegida y actualiza la tabla de resultados
 
         Args:
             evento: Evento de selección del combo (no se usa)
@@ -228,11 +240,14 @@ class AplicacionGUI:
         self.combo_canton.set("")
         self.combo_distrito["values"] = []
         self.combo_distrito.set("")
+        self.combo_asada["values"] = []
+        self.combo_asada.set("")
 
         self.actualizando = False
+        self._actualizar_tabla()
 
     def al_seleccionar_canton(self, evento=None):
-        """Autocompleta la provincia y limita los distritos al cantón elegido
+        """Autocompleta la provincia, limita los distritos y actualiza la tabla
 
         Si el usuario elige un cantón sin haber elegido provincia, esta se completa
         automáticamente a partir de la jerarquía en memoria.
@@ -257,11 +272,14 @@ class AplicacionGUI:
         distritos = self.jerarquia.get(provincia, {}).get(cantón, [])
         self.combo_distrito["values"] = sorted(distritos)
         self.combo_distrito.set("")
+        self.combo_asada["values"] = []
+        self.combo_asada.set("")
 
         self.actualizando = False
+        self._actualizar_tabla()
 
     def al_seleccionar_distrito(self, evento=None):
-        """Autocompleta provincia y cantón a partir del distrito elegido
+        """Autocompleta provincia y cantón, llena el combo ASADA y actualiza la tabla
 
         Permite "brincar" niveles: si el usuario elige solo un distrito, la provincia
         y el cantón correspondientes se completan automáticamente.
@@ -282,25 +300,102 @@ class AplicacionGUI:
             self.combo_canton.set(cantón)
             self.combo_distrito["values"] = sorted(self.jerarquia[provincia][cantón])
             self.combo_distrito.set(distrito)
+            self._cargar_asadas_combo(provincia, cantón, distrito)
 
         self.actualizando = False
+        self._actualizar_tabla()
+
+    def _cargar_asadas_combo(self, provincia: str, cantón: str, distrito: str):
+        """Pide al servidor las ASADAs del distrito y llena el combo con sus códigos
+
+        Args:
+            provincia (str): Provincia seleccionada
+            cantón (str): Cantón seleccionado
+            distrito (str): Distrito seleccionado
+        """
+        self.combo_asada.set("")
+        if not self.conexión:
+            self.combo_asada["values"] = []
+            return
+
+        respuesta = enviar_peticion(self.entrada, self.salida, f"ASADAS|{provincia}|{cantón}|{distrito}")
+        if respuesta[0] != "OK":
+            self.combo_asada["values"] = []
+            return
+
+        códigos = [fila.split(";")[0] for fila in respuesta[1:]]
+        self.combo_asada["values"] = códigos
+
+    def _actualizar_tabla(self):
+        """Actualiza la tabla de resultados según el nivel geográfico llenado
+
+        Muestra las ASADAs del nivel más específico que esté seleccionado: si solo
+        hay provincia, todas las de la provincia; si hay provincia y cantón, las del
+        cantón; y si hay distrito, las del distrito. Si no hay nada, limpia la tabla.
+        """
+        if not self.conexión:
+            return
+
+        provincia = self.combo_provincia.get()
+        cantón = self.combo_canton.get()
+        distrito = self.combo_distrito.get()
+
+        if distrito:
+            peticion = f"ASADAS|{provincia}|{cantón}|{distrito}"
+        elif cantón:
+            peticion = f"ASADAS|{provincia}|{cantón}"
+        elif provincia:
+            peticion = f"ASADAS|{provincia}"
+        else:
+            self._escribir_resultado("")
+            return
+
+        respuesta = enviar_peticion(self.entrada, self.salida, peticion)
+        self._mostrar_tabla(respuesta)
+
+    def _mostrar_tabla(self, respuesta: list[str]):
+        """Muestra en la caja de resultados una tabla de ASADAs a partir de la respuesta
+
+        Args:
+            respuesta (list[str]): Respuesta del servidor a una consulta de ASADAs
+        """
+        if respuesta[0] == "ERROR":
+            self._escribir_resultado(f"[ERROR] {respuesta[1]}")
+            return
+
+        encabezado = f"{'ID':<8}{'Operador':<40}{'Cantón':<16}{'Teléfono':<14}"
+        líneas = [encabezado, "-" * len(encabezado)]
+        for fila in respuesta[1:]:
+            id_a, operador, _provincia, canton, _distrito, telefono = fila.split(";")
+            líneas.append(f"{id_a:<8}{operador[:38]:<40}{canton:<16}{telefono:<14}")
+        líneas.append("")
+        líneas.append(f"Total: {len(respuesta) - 1} ASADAS")
+        self._escribir_resultado("\n".join(líneas))
 
     def limpiar_combos(self):
-        """Reinicia los tres combos y restaura sus listas completas"""
+        """Reinicia los cuatro combos, restaura sus listas y limpia la tabla"""
         self.actualizando = True
         self.combo_provincia.set("")
         self.combo_canton.set("")
         self.combo_distrito.set("")
+        self.combo_asada.set("")
+        self.combo_asada["values"] = []
         self.combo_provincia["values"] = sorted(self.jerarquia.keys())
         self.combo_canton["values"] = self._todos_los_cantones()
         self.combo_distrito["values"] = self._todos_los_distritos()
         self.actualizando = False
+        self._escribir_resultado("")
 
     def buscar_por_id(self):
         """Solicita al servidor una ASADA por su código y muestra sus datos"""
-        id_asada = self.entrada_id.get().strip()
+    def _mostrar_datos_id(self, id_asada: str):
+        """Solicita al servidor los datos de una ASADA y los muestra en resultados
+
+        Args:
+            id_asada (str): Código de la ASADA a consultar
+        """
         if not id_asada:
-            messagebox.showwarning("Aviso", "Ingrese un código de ASADA.")
+            messagebox.showwarning("Aviso", "Indique un código de ASADA.")
             return
         if not self.conexión:
             messagebox.showerror("Error", "No hay conexión con el servidor.")
@@ -317,36 +412,14 @@ class AplicacionGUI:
             líneas.append(f"{clave:<14}: {valor}")
         self._escribir_resultado("\n".join(líneas))
 
-    def ver_asadas_distrito(self):
-        """Solicita al servidor las ASADAS del distrito seleccionado y las muestra"""
-        provincia = self.combo_provincia.get()
-        cantón = self.combo_canton.get()
-        distrito = self.combo_distrito.get()
+    def _mostrar_mapa_id(self, id_asada: str):
+        """Solicita al servidor que genere el mapa de una ASADA por su código
 
-        if not (provincia and cantón and distrito):
-            messagebox.showwarning("Aviso", "Seleccione provincia, cantón y distrito.")
-            return
-        if not self.conexión:
-            messagebox.showerror("Error", "No hay conexión con el servidor.")
-            return
-
-        respuesta = enviar_peticion(self.entrada, self.salida, f"ASADAS|{provincia}|{cantón}|{distrito}")
-        if respuesta[0] == "ERROR":
-            self._escribir_resultado(f"[ERROR] {respuesta[1]}")
-            return
-
-        encabezado = f"{'ID':<8}{'Operador':<40}{'Cantón':<16}{'Teléfono':<14}"
-        líneas = [encabezado, "-" * len(encabezado)]
-        for fila in respuesta[1:]:
-            id_a, operador, _provincia, canton, _distrito, telefono = fila.split(";")
-            líneas.append(f"{id_a:<8}{operador[:38]:<40}{canton:<16}{telefono:<14}")
-        self._escribir_resultado("\n".join(líneas))
-
-    def ver_en_mapa(self):
-        """Solicita al servidor que genere el mapa de la ASADA buscada por código"""
-        id_asada = self.entrada_id.get().strip()
+        Args:
+            id_asada (str): Código de la ASADA a ubicar en el mapa
+        """
         if not id_asada:
-            messagebox.showwarning("Aviso", "Ingrese un código de ASADA para ver el mapa.")
+            messagebox.showwarning("Aviso", "Indique un código de ASADA para ver el mapa.")
             return
         if not self.conexión:
             messagebox.showerror("Error", "No hay conexión con el servidor.")
@@ -357,6 +430,23 @@ class AplicacionGUI:
             self._escribir_resultado(f"[ERROR] {respuesta[1]}")
         else:
             self._escribir_resultado(respuesta[1] if len(respuesta) > 1 else "Mapa generado.")
+
+    def buscar_por_id(self):
+        """Muestra los datos de la ASADA escrita en el campo de búsqueda superior"""
+        self._mostrar_datos_id(self.entrada_id.get().strip())
+
+    def ver_en_mapa(self):
+        """Genera el mapa de la ASADA escrita en el campo de búsqueda superior"""
+        self._mostrar_mapa_id(self.entrada_id.get().strip())
+
+    def mostrar_asada_combo(self):
+        """Muestra los datos de la ASADA seleccionada en el combo de ASADAs"""
+        self._mostrar_datos_id(self.combo_asada.get().strip())
+
+    def ver_en_mapa_combo(self):
+        """Genera el mapa de la ASADA seleccionada en el combo de ASADAs"""
+        self._mostrar_mapa_id(self.combo_asada.get().strip())
+
 
 
 def main():

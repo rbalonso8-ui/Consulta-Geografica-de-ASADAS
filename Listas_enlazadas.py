@@ -11,56 +11,58 @@ class Provincia:
         """Constructor del nodo provincia
 
         Args:
-            nombre (str): nombre de la provincia
+            nombre (str): Nombre de la provincia
         """
         self.nombre = nombre
         self.sig_provincia: int = -1
         self.cantón: int = -1
 
+
 class Cantón:
-    """Representa un Canton como una lista enlazada
+    """Representa un Cantón como una lista enlazada
     """
     def __init__(self, nombre: str):
         """Constructor del nodo cantón
 
         Args:
-            nombre (str): nombre del cantón
+            nombre (str): Nombre del cantón
         """
         self.nombre = nombre
         self.sig_cantón: int = -1
         self.distrito: int = -1
 
+
 class Distrito:
-    """Representa un distrito como una lista enlazada
+    """Representa un Distrito como una lista enlazada
     """
     def __init__(self, nombre: str):
         """Constructor del nodo distrito
 
         Args:
-            nombre (str): nombre del distrito
+            nombre (str): Nombre del distrito
         """
         self.nombre = nombre
         self.sig_distrito: int = -1
         self.asada: int = -1
-        
+
+
 class ASADA:
     """Representa una ASADA como una lista enlazada
     """
-    def __init__(self, id_asada: int, posicion: tuple):
+    def __init__(self, id_asada: str, posicion: int):
         """Constructor del nodo ASADA
 
         Args:
-            id_asada (int): ID de la ASADA
-            posicion (tuple): Posición de la ASADA
+            id_asada (str): ID de la ASADA
+            posicion (int): Posición física del registro en el archivo principal
         """
-        self.id_asada = id_asada    
+        self.id_asada = id_asada
         self.posicion = posicion
         self.sig_asada: int = -1
- 
- 
-        
-def texto_a_bytes(texto: str, tamaño: int)-> bytes:
-    """Convierte un texto a bytes con un tamaño específico
+
+
+def texto_a_bytes(texto: str, tamaño: int) -> bytes:
+    """Convierte un texto a bytes con un tamaño específico, rellenando con nulos
 
     Args:
         texto (str): El texto a convertir
@@ -69,9 +71,10 @@ def texto_a_bytes(texto: str, tamaño: int)-> bytes:
     Returns:
         bytes: El texto convertido a bytes con el tamaño especificado
     """
-    return texto.encode('utf-8').ljust(tamaño, b'\x00') [:tamaño]
+    return str(texto or "").encode('utf-8').ljust(tamaño, b'\x00')[:tamaño]
 
-def entero_a_bytes(entero: int)-> bytes:
+
+def entero_a_bytes(entero: int) -> bytes:
     """Convierte un entero a bytes
 
     Args:
@@ -82,7 +85,8 @@ def entero_a_bytes(entero: int)-> bytes:
     """
     return entero.to_bytes(4, byteorder='big', signed=True)
 
-def bytes_a_entero(bytes: bytes)-> int:
+
+def bytes_a_entero(bytes: bytes) -> int:
     """Convierte 4 bytes a entero
 
     Args:
@@ -93,7 +97,8 @@ def bytes_a_entero(bytes: bytes)-> int:
     """
     return int.from_bytes(bytes, byteorder='big', signed=True)
 
-def bytes_a_texto(bytes: bytes)-> str:
+
+def bytes_a_texto(bytes: bytes) -> str:
     """Convierte bytes a texto, eliminando los caracteres de relleno
 
     Args:
@@ -105,77 +110,81 @@ def bytes_a_texto(bytes: bytes)-> str:
     return bytes.decode('utf-8').rstrip('\x00').rstrip()
 
 
-
-def escribir_provincia(archivo: str, nodo: Provincia):
-    """Escribe el nodo de provincia en un archivo en la posicion actual
+def escribir_provincia(archivo, nodo: Provincia):
+    """Escribe el nodo de provincia en el archivo en la posición actual
 
     Args:
-        archivo (str): nombre del archivo donde se va a escribir el nodo
-        nodo (Provincia): provincia a escribir en el archivo
+        archivo: Archivo abierto en modo escritura binaria
+        nodo (Provincia): Provincia a escribir en el archivo
     """
     archivo.write(texto_a_bytes(nodo.nombre, 50))
     archivo.write(entero_a_bytes(nodo.sig_provincia))
     archivo.write(entero_a_bytes(nodo.cantón))
- 
-def escribir_cantón(archivo: str, nodo: Cantón):
-    """Escribe el nodo de cantón en un archivo en la posicion actual
+
+
+def escribir_cantón(archivo, nodo: Cantón):
+    """Escribe el nodo de cantón en el archivo en la posición actual
 
     Args:
-        archivo (str): nombre del archivo donde se va a escribir el nodo
-        nodo (Cantón): cantón a escribir en el archivo
+        archivo: Archivo abierto en modo escritura binaria
+        nodo (Cantón): Cantón a escribir en el archivo
     """
     archivo.write(texto_a_bytes(nodo.nombre, 50))
     archivo.write(entero_a_bytes(nodo.sig_cantón))
-    archivo.write(entero_a_bytes(nodo.distrito)) 
- 
-def escribir_distrito(archivo: str, nodo: Distrito):
-    """Escribe el nodo de distrito en un archivo en la posicion actual
+    archivo.write(entero_a_bytes(nodo.distrito))
+
+
+def escribir_distrito(archivo, nodo: Distrito):
+    """Escribe el nodo de distrito en el archivo en la posición actual
 
     Args:
-        archivo (str): nombre del archivo donde se va a escribir el nodo
-        nodo (Distrito): distrito a escribir en el archivo
+        archivo: Archivo abierto en modo escritura binaria
+        nodo (Distrito): Distrito a escribir en el archivo
     """
     archivo.write(texto_a_bytes(nodo.nombre, 50))
     archivo.write(entero_a_bytes(nodo.sig_distrito))
     archivo.write(entero_a_bytes(nodo.asada))
- 
-def escribir_asada(archivo: str, nodo: ASADA):
-    """Escribe el nodo ASADA en un archivo en la posición actual
+
+
+def escribir_asada(archivo, nodo: ASADA):
+    """Escribe el nodo ASADA en el archivo en la posición actual
 
     Args:
-        archivo (str): nombre del archivo donde se va a escribir el nodo
+        archivo: Archivo abierto en modo escritura binaria
         nodo (ASADA): ASADA a escribir en el archivo
     """
     archivo.write(texto_a_bytes(nodo.id_asada, 10))
     archivo.write(entero_a_bytes(nodo.posicion))
     archivo.write(entero_a_bytes(nodo.sig_asada))
-    
 
 
 def construir(lista_asadas: list):
-    """Recibe una lista de ASADAS y construye los archivos binarios para provincias, cantones, distritos y ASADAS geográficas
+    """Recibe una lista de ASADAs y construye los archivos binarios de la división política
+
+    Construye provincias.bin, cantones.bin, distritos.bin y ASADAS.bin con punteros
+    lógicos entre niveles (provincia → cantón → distrito → ASADA).
 
     Args:
-        lista_asadas (list): Lista de ASADAS, cada ASADA es un diccionario con las claves "id_asada", "provincia", "canton" y "distrito"
+        lista_asadas (list): Lista de ASADAs, cada una con las claves "id_Asada",
+            "provincia", "canton" y "distrito"
     """
-    
     jerarquia = {}
- 
+
     for posición, asada in enumerate(lista_asadas):
         provincia = (asada.get("provincia") or "SIN PROVINCIA").strip().upper()
-        cantón = (asada.get("canton")    or "SIN CANTON").strip().upper()
-        distrito = (asada.get("distrito")  or "SIN DISTRITO").strip().upper()
+        cantón = (asada.get("canton") or "SIN CANTON").strip().upper()
+        distrito = (asada.get("distrito") or "SIN DISTRITO").strip().upper()
         id_asada = str(asada.get("id_Asada") or "").strip()
 
         posición_principal = posición
- 
+
         if provincia not in jerarquia:
             jerarquia[provincia] = {}
         if cantón not in jerarquia[provincia]:
             jerarquia[provincia][cantón] = {}
         if distrito not in jerarquia[provincia][cantón]:
             jerarquia[provincia][cantón][distrito] = []
- 
+
         jerarquia[provincia][cantón][distrito].append((id_asada, posición_principal))
 
     for provincia in jerarquia:
@@ -184,8 +193,8 @@ def construir(lista_asadas: list):
                 jerarquia[provincia][cantón][distrito].sort(key=lambda x: x[0])
 
     nodos_provincias = []
-    nodos_cantones   = []
-    nodos_distritos  = []
+    nodos_cantones = []
+    nodos_distritos = []
     nodos_asadas_geo = []
  
     for i_prov, nombre_provincia in enumerate(sorted(jerarquia.keys())):
@@ -217,19 +226,19 @@ def construir(lista_asadas: list):
     with open("provincias.bin", "wb") as f:
         for nodo in nodos_provincias:
             escribir_provincia(f, nodo)
- 
+
     with open("cantones.bin", "wb") as f:
         for nodo in nodos_cantones:
             escribir_cantón(f, nodo)
- 
+
     with open("distritos.bin", "wb") as f:
         for nodo in nodos_distritos:
             escribir_distrito(f, nodo)
- 
+
     with open("ASADAS.bin", "wb") as f:
         for nodo in nodos_asadas_geo:
             escribir_asada(f, nodo)
- 
+
     print("Archivos creados:")
     print(f"provincias.bin: {len(nodos_provincias)} provincias")
     print(f"cantones.bin: {len(nodos_cantones)} cantones")
@@ -237,32 +246,32 @@ def construir(lista_asadas: list):
     print(f"ASADAS.bin: {len(nodos_asadas_geo)} nodos ASADA")
 
 
-
-def leer_provincia(archivo:str, posición:int) -> Provincia:
-    """Lee un nodo de provincia desde un archivo en una posición específica
+def leer_provincia(archivo, posición: int) -> Provincia:
+    """Lee un nodo de provincia desde el archivo en una posición específica
 
     Args:
-        archivo(str): Archivo abierto en modo lectura binaria
-        posición(int): Posición del nodo a leer (en bytes)
+        archivo: Archivo abierto en modo lectura binaria
+        posición (int): Posición del nodo a leer (índice de nodo)
 
     Returns:
-        Provincia(Provincia): El nodo de provincia leído desde el archivo
+        Provincia: El nodo de provincia leído desde el archivo
     """
     archivo.seek(posición * TAMAÑO)
     nodo = Provincia(bytes_a_texto(archivo.read(50)))
     nodo.sig_provincia = bytes_a_entero(archivo.read(4))
     nodo.cantón = bytes_a_entero(archivo.read(4))
     return nodo
- 
-def leer_cantón(archivo:str, posición:int) -> Cantón:
-    """Lee un nodo de cantón desde un archivo en una posición específica
+
+
+def leer_cantón(archivo, posición: int) -> Cantón:
+    """Lee un nodo de cantón desde el archivo en una posición específica
 
     Args:
-        archivo(str): Archivo abierto en modo lectura binaria
-        posición(int): Posición del nodo a leer (en bytes)
+        archivo: Archivo abierto en modo lectura binaria
+        posición (int): Posición del nodo a leer (índice de nodo)
 
     Returns:
-        Cantón(Cantón): El nodo de cantón leído desde el archivo
+        Cantón: El nodo de cantón leído desde el archivo
     """
     archivo.seek(posición * TAMAÑO)
     nodo = Cantón(bytes_a_texto(archivo.read(50)))
@@ -270,15 +279,16 @@ def leer_cantón(archivo:str, posición:int) -> Cantón:
     nodo.distrito = bytes_a_entero(archivo.read(4))
     return nodo
 
-def leer_distrito(archivo:str, posición:int) -> Distrito:
-    """Lee un nodo de distrito desde un archivo en una posición específica
+
+def leer_distrito(archivo, posición: int) -> Distrito:
+    """Lee un nodo de distrito desde el archivo en una posición específica
 
     Args:
-        archivo(str): Archivo abierto en modo lectura binaria
-        posición(int): Posición del nodo a leer (en bytes)
+        archivo: Archivo abierto en modo lectura binaria
+        posición (int): Posición del nodo a leer (índice de nodo)
 
     Returns:
-        Distrito(Distrito): El nodo de distrito leído desde el archivo
+        Distrito: El nodo de distrito leído desde el archivo
     """
     archivo.seek(posición * TAMAÑO)
     nodo = Distrito(bytes_a_texto(archivo.read(50)))
@@ -286,15 +296,16 @@ def leer_distrito(archivo:str, posición:int) -> Distrito:
     nodo.asada = bytes_a_entero(archivo.read(4))
     return nodo
 
-def leer_asada(archivo:str, posición:int) -> ASADA:
-    """Lee un nodo de ASADA desde un archivo en una posición específica
+
+def leer_asada(archivo, posición: int) -> ASADA:
+    """Lee un nodo de ASADA desde el archivo en una posición específica
 
     Args:
-        archivo(str): Archivo abierto en modo lectura binaria
-        posición(int): Posición del nodo a leer (en bytes)
+        archivo: Archivo abierto en modo lectura binaria
+        posición (int): Posición del nodo a leer (índice de nodo)
 
     Returns:
-        ASADA(ASADA): El nodo de ASADA leído desde el archivo
+        ASADA: El nodo de ASADA leído desde el archivo
     """
     archivo.seek(posición * TAMAÑO_ASADA)
     id_asada = bytes_a_texto(archivo.read(10))
@@ -303,8 +314,13 @@ def leer_asada(archivo:str, posición:int) -> ASADA:
     nodo.sig_asada = bytes_a_entero(archivo.read(4))
     return nodo
 
+
 def obtener_provincias() -> list[str]:
-    """Obtiene los nombres de todas las provincias registradas."""
+    """Obtiene los nombres de todas las provincias registradas
+
+    Returns:
+        list[str]: Lista de nombres de provincias
+    """
     provincias = []
     with open("provincias.bin", "rb") as doc:
         indice = 0
@@ -315,19 +331,20 @@ def obtener_provincias() -> list[str]:
                 break
             indice = nodo.sig_provincia
     return provincias
-    
-def obtener_cantones(nombre_provincia: str)-> list[str]:
-    """Obtiene todos los cantones guardados dentro de una Provincia
+
+
+def obtener_cantones(nombre_provincia: str) -> list[str]:
+    """Obtiene todos los cantones guardados dentro de una provincia
 
     Args:
-        nombre_provincia (str): nombre de la provincia de la cual se quieren obtener los cantones
+        nombre_provincia (str): Nombre de la provincia de la cual se quieren los cantones
 
     Returns:
         list[str]: Lista de nombres de cantones, o lista vacía si no existe
     """
     nombre_provincia = nombre_provincia.strip().upper()
     cantones = []
- 
+
     with open("provincias.bin", "rb") as doc_1, open("cantones.bin", "rb") as doc_2:
         indice = 0
         while True:
@@ -344,12 +361,13 @@ def obtener_cantones(nombre_provincia: str)-> list[str]:
             indice = nodo_provincia.sig_provincia
     return cantones
 
-def obtener_distritos(nombre_provincia: str, nombre_cantón: str)-> list[str]:
-    """Obtiene todos los distritos guardados dentro de un Cantón específico
+
+def obtener_distritos(nombre_provincia: str, nombre_cantón: str) -> list[str]:
+    """Obtiene todos los distritos guardados dentro de un cantón específico
 
     Args:
-        nombre_provincia (str): nombre de la provincia a la que pertenece el cantón
-        nombre_cantón (str): nombre del cantón del cual se quieren obtener los distritos
+        nombre_provincia (str): Nombre de la provincia a la que pertenece el cantón
+        nombre_cantón (str): Nombre del cantón del cual se quieren los distritos
 
     Returns:
         list[str]: Lista de nombres de distritos, o lista vacía si no existe
@@ -357,7 +375,7 @@ def obtener_distritos(nombre_provincia: str, nombre_cantón: str)-> list[str]:
     nombre_provincia = nombre_provincia.strip().upper()
     nombre_cantón = nombre_cantón.strip().upper()
     distritos = []
- 
+
     with open("provincias.bin", "rb") as doc_1, open("cantones.bin", "rb") as doc_2, open("distritos.bin", "rb") as doc_3:
         indice_provincia = 0
         while True:
@@ -380,22 +398,23 @@ def obtener_distritos(nombre_provincia: str, nombre_cantón: str)-> list[str]:
             indice_provincia = nodo_provincia.sig_provincia
     return distritos
 
-def obtener_asadas(nombre_provincia: str, nombre_cantón: str, nombre_distrito: str)-> list[str]:
-    """Obtiene todas las ASADAS guardadas dentro de un Distrito específico
+
+def obtener_asadas(nombre_provincia: str, nombre_cantón: str, nombre_distrito: str) -> list[str]:
+    """Obtiene todas las ASADAs guardadas dentro de un distrito específico
 
     Args:
-        nombre_provincia (str): nombre de la provincia a la que pertenece el distrito
-        nombre_cantón (str): nombre del cantón al que pertenece el distrito
-        nombre_distrito (str): nombre del distrito del cual se quieren obtener las ASADAS
+        nombre_provincia (str): Nombre de la provincia a la que pertenece el distrito
+        nombre_cantón (str): Nombre del cantón al que pertenece el distrito
+        nombre_distrito (str): Nombre del distrito del cual se quieren las ASADAs
 
     Returns:
-        list[str]: Lista de IDs de ASADAS, o lista vacía si no existe
+        list[str]: Lista de IDs de ASADAs, o lista vacía si no existe
     """
     nombre_provincia = nombre_provincia.strip().upper()
     nombre_cantón = nombre_cantón.strip().upper()
     nombre_distrito = nombre_distrito.strip().upper()
     asadas = []
- 
+
     with open("provincias.bin", "rb") as doc_1, open("cantones.bin", "rb") as doc_2, open("distritos.bin", "rb") as doc_3, open("ASADAS.bin", "rb") as doc_4:
         indice_provincia = 0
         while True:
@@ -423,6 +442,38 @@ def obtener_asadas(nombre_provincia: str, nombre_cantón: str, nombre_distrito: 
                 break
             indice_provincia = nodo_provincia.sig_provincia
     return asadas
+
+
+def obtener_asadas_de_canton(nombre_provincia: str, nombre_cantón: str) -> list[str]:
+    """Obtiene todas las ASADAs de un cantón completo, recorriendo todos sus distritos
+
+    Args:
+        nombre_provincia (str): Nombre de la provincia a la que pertenece el cantón
+        nombre_cantón (str): Nombre del cantón del cual se quieren todas las ASADAs
+
+    Returns:
+        list[str]: Lista de IDs de ASADAs de todos los distritos del cantón
+    """
+    asadas = []
+    for distrito in obtener_distritos(nombre_provincia, nombre_cantón):
+        asadas.extend(obtener_asadas(nombre_provincia, nombre_cantón, distrito))
+    return asadas
+
+
+def obtener_asadas_de_provincia(nombre_provincia: str) -> list[str]:
+    """Obtiene todas las ASADAs de una provincia completa, recorriendo todos sus cantones
+
+    Args:
+        nombre_provincia (str): Nombre de la provincia de la cual se quieren todas las ASADAs
+
+    Returns:
+        list[str]: Lista de IDs de ASADAs de todos los cantones de la provincia
+    """
+    asadas = []
+    for cantón in obtener_cantones(nombre_provincia):
+        asadas.extend(obtener_asadas_de_canton(nombre_provincia, cantón))
+    return asadas
+
 
 if __name__ == "__main__":
     with open("asadas.json", "r", encoding="utf-8") as f:
