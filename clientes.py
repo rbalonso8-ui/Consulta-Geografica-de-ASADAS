@@ -47,6 +47,12 @@ def mostrar_asada(respuesta: list[str]):
 
 
 def mostrar_lista(respuesta: list[str], titulo: str):
+    """Muestra en pantalla una lista simple de elementos recibida del servidor
+ 
+    Args:
+        respuesta (list[str]): Líneas de respuesta del servidor
+        titulo (str): Título a mostrar encima de la lista
+    """
     if respuesta[0] == "ERROR":
         print(f"\n[ERROR] {respuesta[1]}")
         return
@@ -57,6 +63,11 @@ def mostrar_lista(respuesta: list[str], titulo: str):
 
 
 def mostrar_asadas_division(respuesta: list[str]):
+    """Muestra en pantalla una tabla con las ASADAs de una división geográfica
+ 
+    Args:
+        respuesta (list[str]): Líneas de respuesta del servidor para una consulta por distrito
+    """
     if respuesta[0] == "ERROR":
         print(f"\n[ERROR] {respuesta[1]}")
         return
@@ -71,6 +82,11 @@ def mostrar_asadas_division(respuesta: list[str]):
 
 
 def menu() -> str:
+    """Muestra el menú principal y solicita la opción al usuario
+ 
+    Returns:
+        str: Opción seleccionada por el usuario
+    """
     print("\n=== Consulta remota de ASADAS ===")
     print("1. Buscar ASADA por identificador")
     print("2. Ver provincias disponibles")
@@ -82,6 +98,8 @@ def menu() -> str:
 
 
 def main():
+    """Conecta con el servidor y hace el ciclo de consulta por consola
+    """
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as conexión:
         conexión.connect((HOST, PORT))
         entrada = conexión.makefile("r", encoding="utf-8")
