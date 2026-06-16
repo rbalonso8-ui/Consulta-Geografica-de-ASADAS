@@ -14,6 +14,9 @@ class Nodo:
         """
         self.id_asada = id_asada
         self.posición = posición
+        self.índice = -1
+        self.indice_izquierda = -1
+        self.indice_derecha = -1
         self.izquierda = None
         self.derecha = None
 
@@ -59,6 +62,16 @@ def bytes_a_entero(bytes: bytes) -> int:
     """
     return int.from_bytes(bytes, byteorder='big', signed=True)
 
+def bytes_a_texto(bytes: bytes) -> str:
+    """Convierte bytes a texto, eliminando el relleno de nulos
+
+    Args:
+        bytes (bytes): Bytes a convertir a texto
+
+    Returns:
+        str: Texto resultante de la conversión sin caracteres de relleno
+    """
+    return bytes.decode('utf-8').rstrip('\x00').rstrip()
 
 
 def insertar(raíz: Nodo, inicio: int, fin: int, lista: list):
@@ -139,7 +152,7 @@ def guardar_árbol(árbol: ArbolBinario, nombre_archivo: str = "arbol_binario.bi
             archivo.write(entero_a_bytes(idx_izquierda))
             archivo.write(entero_a_bytes(idx_derecha))
  
-    print(f"árbol_binario.bin creado: {len(nodos_ordenados)} nodos de {TAMAÑO} bytes c/u")
+    print(f"árbol_binario.bin creado: {len(nodos_ordenados)} nodos de {TAMAÑO} bytes")
  
  
  
@@ -161,19 +174,19 @@ def cargar_árbol(nombre_archivo: str = "arbol_binario.bin") -> ArbolBinario:
             if not bloque:
                 break
  
-            id_asada = bloque[0:6].decode("utf-8").rstrip('\x00').rstrip()
+            id_asada = bytes_a_texto(bloque[0:6])
             posición = bytes_a_entero(bloque[6:10])
             idx_izquierda  = bytes_a_entero(bloque[10:14])
             idx_derecha  = bytes_a_entero(bloque[14:18])
  
             nodo          = Nodo(id_asada, posición)
-            nodo.index_izquierda = idx_izquierda
-            nodo.index_derecha = idx_derecha
+            nodo.indice_izquierda = idx_izquierda
+            nodo.indice_derecha = idx_derecha
             nodos.append(nodo)
  
     for nodo in nodos:
-        nodo.izquierda = nodos[nodo.index_izquierda] if nodo.index_izquierda != -1 else None
-        nodo.derecha = nodos[nodo.index_derecha] if nodo.index_derecha != -1 else None
+        nodo.izquierda = nodos[nodo.indice_izquierda] if nodo.indice_izquierda != -1 else None
+        nodo.derecha = nodos[nodo.indice_derecha] if nodo.indice_derecha != -1 else None
  
     árbol = ArbolBinario()
     árbol.raíz = nodos[0] if nodos else None
