@@ -6,8 +6,15 @@ PORT = 5050
 
 
 def enviar_peticion(entrada, salida, peticion: str) -> list[str]:
-    """Envía una petición al servidor y devuelve las líneas de la
-    respuesta, sin incluir la línea final 'FIN'.
+    """Envía una petición al servidor y devuelve las líneas de la respuesta
+ 
+    Args:
+        entrada: Flujo de lectura asociado al socket
+        salida: Flujo de escritura asociado al socket
+        peticion (str): Petición a enviar al servidor
+ 
+    Returns:
+        list[str]: Líneas de la respuesta, sin incluir la línea final "FIN"
     """
     salida.write(peticion + "\n")
     salida.flush()
@@ -22,6 +29,11 @@ def enviar_peticion(entrada, salida, peticion: str) -> list[str]:
 
 
 def mostrar_asada(respuesta: list[str]):
+    """Muestra en pantalla los datos de una ASADA recibida del servidor
+
+    Args:
+        respuesta (list[str]): Lineas de la respuesta del servidor para una busqueda por ID
+    """
     if respuesta[0] == "ERROR":
         print(f"\n[ERROR] {respuesta[1]}")
         return
