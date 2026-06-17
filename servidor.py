@@ -154,19 +154,19 @@ def etiqueta_cliente(numero: int) -> str:
     return "Host" if numero == 1 else f"Cliente {numero - 1}"
 
 
-def atender_cliente(conexión: socket.socket, dirección, numero: int):
+def atender_cliente(conexión: socket.socket, dirección):
     """Atiende a un cliente remoto en un hilo independiente
 
-    Lee peticiones línea por línea, las procesa y devuelve la respuesta
-    correspondiente, hasta que el cliente cierra la conexión.
+    El número de cliente se asigna solo cuando la conexión envía su primera
+    petición real, de modo que las conexiones de prueba (las que comprueban si
+    el servidor existe y se cierran sin enviar nada) no consuman un número.
 
     Args:
         conexión (socket.socket): Socket de la conexión con el cliente
         dirección: Dirección (IP, puerto) del cliente conectado
-        numero (int): Identificador secuencial asignado a esta conexión
     """
-    nombre = etiqueta_cliente(numero)
-    print(f"[SERVIDOR] {nombre} conectado desde {dirección}")
+    global contador_clientes
+    nombre = None
 
     try:
         with conexión:
@@ -176,6 +176,13 @@ def atender_cliente(conexión: socket.socket, dirección, numero: int):
             for línea in entrada:
                 if not línea.strip():
                     continue
+
+                if nombre is None:  # primera petición real: ahora sí se cuenta
+                    with lock:
+                        contador_clientes += 1
+                        numero = contador_clientes
+                    nombre = etiqueta_cliente(numero)
+                    print(f"[SERVIDOR] {nombre} conectado desde {dirección}")
 
                 print(f"[SERVIDOR] {nombre} -> {línea.strip()}")
                 respuesta = manejar_peticion(línea)
@@ -187,12 +194,12 @@ def atender_cliente(conexión: socket.socket, dirección, numero: int):
     except (ConnectionResetError, BrokenPipeError):
         pass
     finally:
-        print(f"[SERVIDOR] {nombre} desconectado ({dirección})")
+        if nombre is not None:
+            print(f"[SERVIDOR] {nombre} desconectado ({dirección})")
 
 
 def iniciar_servidor():
     """Inicia el servidor: prepara las estructuras y atiende clientes con hilos"""
-    global contador_clientes
     preparar_estructuras()
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as servidor:
@@ -206,12 +213,9 @@ def iniciar_servidor():
 
         while True:
             conexión, dirección = servidor.accept()
-            with lock:
-                contador_clientes += 1
-                numero = contador_clientes
             hilo = threading.Thread(
                 target=atender_cliente,
-                args=(conexión, dirección, numero),
+                args=(conexión, dirección),
                 daemon=True,
             )
             hilo.start()
